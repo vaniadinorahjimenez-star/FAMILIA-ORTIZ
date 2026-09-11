@@ -1,0 +1,42 @@
+{
+  "familyChat": [
+    {
+      "id": "chat-seed-1",
+      "sender": "Mamá",
+      "senderRole": "mama",
+      "text": "¡Hola mis niñas hermosas! Bienvenidos a su chat familiar en tiempo real. Aquí podemos avisarnos de tareas, mandarnos fotos y felicitaciones 💕",
+      "timestamp": "2026-09-10T04:05:34.537Z"
+    },
+    {
+      "id": "chat-seed-2",
+      "sender": "Romina",
+      "senderRole": "romina",
+      "text": "¡Hola mami! Ya saqué a pasear a Luna 🐾🌸",
+      "timestamp": "2026-09-10T16:05:34.537Z"
+    },
+    {
+      "id": "chat-seed-3",
+      "sender": "Regina",
+      "senderRole": "regina",
+      "text": "¡Hola a todos! Ya terminé mi tarea y voy a gimnasia 🤸‍♀️💜",
+      "timestamp": "2026-09-11T00:05:34.537Z"
+    },
+    {
+      "sender": "Romina",
+      "senderRole": "romina",
+      "text": "¡Hola! Ya estoy conectada desde mi iPad 🌸",
+      "id": "chat-1789099537508-3k1t4",
+      "timestamp": "2026-09-11T04:05:37.508Z"
+    }
+  ],
+  "completions": {},
+  "familyActivities": [],
+  "familyNotes": [],
+  "bonusLogs": [],
+  "customTasks": [],
+  "weeklyPayouts": {},
+  "taskEvidences": [],
+  "fines": [],
+  "extraPayments": [],
+  "lastUpdated": "2026-09-11T04:05:37.508Z"
+}

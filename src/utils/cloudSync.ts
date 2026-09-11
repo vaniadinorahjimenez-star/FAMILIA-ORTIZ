@@ -73,11 +73,12 @@ export function saveStoredRemoteObjectId(id: string) {
 }
 
 /**
- * Fetch current state from the cloud room
+ * Fetch current state from the cloud server
  */
-export async function fetchCloudState(remoteId = getStoredRemoteObjectId()): Promise<CloudSyncPayload | null> {
+export async function fetchCloudState(): Promise<CloudSyncPayload | null> {
   try {
-    const res = await fetch(`${API_BASE}/${remoteId}`, {
+    // 1. Primary: fetch from our dedicated full-stack Express server
+    const res = await fetch('/api/sync', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -85,78 +86,80 @@ export async function fetchCloudState(remoteId = getStoredRemoteObjectId()): Pro
       cache: 'no-store',
     });
 
-    if (!res.ok) {
-      if (res.status === 404) {
-        return null;
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.lastUpdated) {
+        return data as CloudSyncPayload;
       }
-      throw new Error(`Error en servidor de sincronización (${res.status})`);
     }
-
-    const json = await res.json();
-    if (json && json.data && json.data.lastUpdated) {
-      return json.data as CloudSyncPayload;
-    }
-    return null;
   } catch (err) {
-    console.warn('Error fetching cloud state:', err);
-    return null;
+    console.warn('[CloudSync] Internal /api/sync unreachable, trying fallback:', err);
   }
+
+  // Fallback to external mirror if needed
+  try {
+    const remoteId = getStoredRemoteObjectId();
+    const res = await fetch(`${API_BASE}/${remoteId}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data && json.data.lastUpdated) {
+        return json.data as CloudSyncPayload;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
 }
 
 /**
- * Push current state to the cloud room
+ * Push current state to the cloud server
  */
 export async function pushCloudState(
   payload: CloudSyncPayload,
   remoteId = getStoredRemoteObjectId(),
   roomName = getStoredRoomId()
 ): Promise<string> {
+  let serverSyncSuccess = false;
+
+  // 1. Primary: push to our dedicated full-stack server
   try {
-    // If we have an existing remote object ID, try PUT
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      serverSyncSuccess = true;
+    }
+  } catch (err) {
+    console.warn('[CloudSync] Failed to push to /api/sync:', err);
+  }
+
+  // 2. Secondary backup push
+  try {
     if (remoteId) {
-      const putRes = await fetch(`${API_BASE}/${remoteId}`, {
+      await fetch(`${API_BASE}/${remoteId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: `Room_${roomName}`,
           data: payload,
         }),
       });
-
-      if (putRes.ok) {
-        const json = await putRes.json();
-        return json.id || remoteId;
-      }
     }
-
-    // Otherwise, create a new cloud object
-    const postRes = await fetch(API_BASE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: `Room_${roomName}`,
-        data: payload,
-      }),
-    });
-
-    if (!postRes.ok) {
-      throw new Error(`No se pudo sincronizar en la nube (${postRes.status})`);
-    }
-
-    const created = await postRes.json();
-    if (created && created.id) {
-      saveStoredRemoteObjectId(created.id);
-      return created.id;
-    }
-    return remoteId;
-  } catch (err) {
-    console.error('Error pushing cloud state:', err);
-    throw err;
+  } catch {
+    // ignore backup error
   }
+
+  return serverSyncSuccess ? 'server-synced' : remoteId;
 }
 
 /**

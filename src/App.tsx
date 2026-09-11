@@ -54,6 +54,7 @@ import {
   mergeCloudData, 
   getStoredRoomId 
 } from './utils/cloudSync';
+import { realtimeChat } from './utils/realtimeChat';
 
 import { Header, ActiveTab } from './components/Header';
 import { DailyView } from './components/DailyView';
@@ -241,9 +242,9 @@ export default function App() {
     }
   };
 
-  // Initial and periodic sync pull (every 8 seconds if active)
+  // Initial sync & Real-time WebSockets / SSE subscription
   useEffect(() => {
-    // Initial sync
+    // 1. Initial full state sync
     const initialSync = async () => {
       try {
         const remote = await fetchCloudState();
@@ -260,14 +261,73 @@ export default function App() {
     };
     initialSync();
 
-    // Background polling
+    // 2. Initial chat messages load from server
+    realtimeChat.fetchAllMessages().then((remoteMsgs) => {
+      if (remoteMsgs && remoteMsgs.length > 0) {
+        setChatMessages((prev) => {
+          const map = new Map<string, FamilyChatMessage>();
+          [...prev, ...remoteMsgs].forEach((m) => map.set(m.id, m));
+          const sorted = Array.from(map.values()).sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          saveStoredFamilyChat(sorted);
+          return sorted;
+        });
+      }
+    });
+
+    // 3. Real-time multi-device subscription (instant event delivery across iPad, celular, PC)
+    const unsubscribe = realtimeChat.subscribe((event) => {
+      if (event.type === 'chat_message') {
+        setChatMessages((prev) => {
+          const exists = prev.some((m) => m.id === event.message.id);
+          const updated = exists 
+            ? prev.map((m) => m.id === event.message.id ? event.message : m)
+            : [...prev, event.message];
+          saveStoredFamilyChat(updated);
+
+          // Audio chime when a new message arrives from another user
+          if (!exists && event.message.senderRole !== activeUser) {
+            soundFX.playChime();
+          }
+          return updated;
+        });
+      } else if (event.type === 'update_message') {
+        setChatMessages((prev) => {
+          const updated = prev.map((m) => m.id === event.message.id ? event.message : m);
+          saveStoredFamilyChat(updated);
+          return updated;
+        });
+      } else if (event.type === 'delete_message') {
+        setChatMessages((prev) => {
+          const updated = prev.filter((m) => m.id !== event.id);
+          saveStoredFamilyChat(updated);
+          return updated;
+        });
+      } else if (event.type === 'init') {
+        if (event.familyChat && Array.isArray(event.familyChat)) {
+          setChatMessages((prev) => {
+            const map = new Map<string, FamilyChatMessage>();
+            [...prev, ...event.familyChat].forEach((m) => map.set(m.id, m));
+            const sorted = Array.from(map.values()).sort(
+              (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+            saveStoredFamilyChat(sorted);
+            return sorted;
+          });
+        }
+      } else if (event.type === 'sync_update' && event.payload) {
+        applyMergedPayload(event.payload);
+      }
+    });
+
+    // 4. Fast Background Polling every 4 seconds to ensure full consistency across tabs
     const interval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing) {
         try {
           const remote = await fetchCloudState();
           if (remote && remote.lastUpdated) {
             const current = getCurrentPayload();
-            // If remote has newer update or differs, merge
             const merged = mergeCloudData(current, remote);
             applyMergedPayload(merged);
           }
@@ -275,10 +335,13 @@ export default function App() {
           // silent background check
         }
       }
-    }, 8000);
+    }, 4000);
 
-    return () => clearInterval(interval);
-  }, []); // Run once on mount
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
+  }, [activeUser, applyMergedPayload]);
 
   // Export complete family backup JSON
   const handleExportBackup = () => {
@@ -597,70 +660,89 @@ export default function App() {
     soundFX.playPop();
   };
 
-  // Family Chat Handlers
-  const handleSendMessage = (msg: FamilyChatMessage) => {
-    const updated = [...chatMessages, msg];
-    setChatMessages(updated);
-    saveStoredFamilyChat(updated);
-    triggerDebouncedPush({
-      ...getCurrentPayload(),
-      familyChat: updated,
+  // Family Chat Handlers (Real-time synced across all devices)
+  const handleSendMessage = async (msg: FamilyChatMessage) => {
+    // 1. Optimistic update for sender's UI
+    setChatMessages((prev) => {
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      const updated = [...prev, msg];
+      saveStoredFamilyChat(updated);
+      return updated;
     });
+
+    // 2. Broadcast via server in real time (WebSockets + SSE + DB)
+    try {
+      await realtimeChat.sendMessage(msg);
+    } catch (err) {
+      console.warn('[Chat] Realtime send error:', err);
+    }
+
+    // 3. Keep cloud backup state aligned
+    triggerDebouncedPush(getCurrentPayload());
   };
 
-  const handleDeleteMessage = (id: string) => {
-    const updated = chatMessages.filter((m) => m.id !== id);
-    setChatMessages(updated);
-    saveStoredFamilyChat(updated);
-    triggerDebouncedPush({
-      ...getCurrentPayload(),
-      familyChat: updated,
+  const handleDeleteMessage = async (id: string) => {
+    setChatMessages((prev) => {
+      const updated = prev.filter((m) => m.id !== id);
+      saveStoredFamilyChat(updated);
+      return updated;
     });
+    try {
+      await realtimeChat.deleteMessage(id);
+    } catch (err) {
+      console.warn('[Chat] Realtime delete error:', err);
+    }
     soundFX.playPop();
   };
 
-  const handleAddReaction = (messageId: string, emoji: string) => {
-    const updated = chatMessages.map((m) => {
-      if (m.id === messageId) {
-        const currentCount = m.reactions?.[emoji] || 0;
-        return {
-          ...m,
-          reactions: {
-            ...(m.reactions || {}),
-            [emoji]: currentCount + 1,
-          },
-        };
-      }
-      return m;
+  const handleAddReaction = async (messageId: string, emoji: string) => {
+    setChatMessages((prev) => {
+      const updated = prev.map((m) => {
+        if (m.id === messageId) {
+          const currentCount = m.reactions?.[emoji] || 0;
+          return {
+            ...m,
+            reactions: {
+              ...(m.reactions || {}),
+              [emoji]: currentCount + 1,
+            },
+          };
+        }
+        return m;
+      });
+      saveStoredFamilyChat(updated);
+      return updated;
     });
-    setChatMessages(updated);
-    saveStoredFamilyChat(updated);
-    triggerDebouncedPush({
-      ...getCurrentPayload(),
-      familyChat: updated,
-    });
+    try {
+      await realtimeChat.reactToMessage(messageId, emoji);
+    } catch (err) {
+      console.warn('[Chat] Realtime react error:', err);
+    }
     soundFX.playPop();
   };
 
   // Mamá notice approval handler
-  const handleMamaApproveNotice = (messageId: string, comment?: string) => {
-    const updated = chatMessages.map((m) => {
-      if (m.id === messageId) {
-        return {
-          ...m,
-          reviewedByMama: true,
-          mamaComment: comment,
-          mamaApprovedAt: new Date().toISOString(),
-        };
-      }
-      return m;
+  const handleMamaApproveNotice = async (messageId: string, comment?: string) => {
+    setChatMessages((prev) => {
+      const updated = prev.map((m) => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            reviewedByMama: true,
+            mamaComment: comment,
+            mamaApprovedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      });
+      saveStoredFamilyChat(updated);
+      return updated;
     });
-    setChatMessages(updated);
-    saveStoredFamilyChat(updated);
-    triggerDebouncedPush({
-      ...getCurrentPayload(),
-      familyChat: updated,
-    });
+    try {
+      await realtimeChat.approveNotice(messageId, comment);
+    } catch (err) {
+      console.warn('[Chat] Realtime approve error:', err);
+    }
   };
 
   // Active fines count
