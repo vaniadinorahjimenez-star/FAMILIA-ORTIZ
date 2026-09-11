@@ -19,12 +19,14 @@ import {
   RotateCw,
   Coins,
   Camera,
-  ShieldAlert
+  ShieldAlert,
+  WifiOff
 } from 'lucide-react';
 import { RoutineTask, ChildId, FamilyActivity, BonusLogEntry } from '../types';
 import { soundFX } from '../utils/audio';
 import { formatDateKey } from '../utils/scheduleGenerator';
 import { LunaFrenchPoodle } from './LunaFrenchPoodle';
+import { DailyFunFactWidget } from './DailyFunFactWidget';
 
 interface DailyViewProps {
   currentDate: Date;
@@ -42,6 +44,10 @@ interface DailyViewProps {
   activeFinesCount?: number;
   onNavigateToFines?: () => void;
   onNavigateToEvidences?: () => void;
+  activeUser?: string;
+  onShareToChat?: (text: string) => void;
+  isOnline?: boolean;
+  pendingChangesCount?: number;
 }
 
 export const DailyView: React.FC<DailyViewProps> = ({
@@ -60,6 +66,10 @@ export const DailyView: React.FC<DailyViewProps> = ({
   activeFinesCount = 0,
   onNavigateToFines,
   onNavigateToEvidences,
+  activeUser,
+  onShareToChat,
+  isOnline = true,
+  pendingChangesCount = 0,
 }) => {
   const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const isGymDay = dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5;
@@ -529,6 +539,40 @@ export const DailyView: React.FC<DailyViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Motivational Widget: Dato Curioso del Día (Perritos o Ciencia) */}
+      <DailyFunFactWidget
+        currentDate={currentDate}
+        activeUser={activeUser}
+        onShareToChat={onShareToChat}
+      />
+
+      {/* Offline Mode Reassurance Banner in Daily Routines */}
+      {!isOnline && (
+        <div 
+          id="daily-offline-notice"
+          className="bg-amber-100/90 border border-amber-300 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-xs animate-in fade-in"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+              <WifiOff className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-sm text-amber-950 flex items-center gap-1.5">
+                Modo Offline activo: Las niñas pueden seguir marcando sus rutinas con normalidad
+              </span>
+              <p className="text-[11px] text-amber-850 mt-0.5">
+                Tus palomitas, puntos acumulados y celebraciones se guardan de inmediato en este dispositivo y se sincronizarán con la nube en segundo plano cuando vuelva la conexión.
+              </p>
+            </div>
+          </div>
+          {pendingChangesCount > 0 && (
+            <span className="bg-amber-200 text-amber-950 border border-amber-400/60 text-xs font-black px-3 py-1 rounded-xl whitespace-nowrap self-end sm:self-auto">
+              💾 {pendingChangesCount} {pendingChangesCount === 1 ? 'cambio pendiente' : 'cambios pendientes'}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Routine Timeline Sections */}
       <div className="space-y-6">

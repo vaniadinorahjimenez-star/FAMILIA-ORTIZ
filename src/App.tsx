@@ -72,6 +72,8 @@ import { TaskEvidencesView } from './components/TaskEvidencesView';
 import { FinesPolicePanel } from './components/FinesPolicePanel';
 import { FamilyChatView } from './components/FamilyChatView';
 import { FamilySyncModal } from './components/FamilySyncModal';
+import { NetworkStatusIndicator } from './components/NetworkStatusIndicator';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('daily');
@@ -200,16 +202,37 @@ export default function App() {
     setLastSyncTime(new Date().toISOString());
   }, []);
 
+  // Network and offline resilience manager
+  const networkStatus = useNetworkStatus(async () => {
+    // When reconnected, perform full automatic cloud sync in background
+    try {
+      const remote = await fetchCloudState();
+      const current = getCurrentPayload();
+      if (remote) {
+        const merged = mergeCloudData(current, remote);
+        applyMergedPayload(merged);
+        await pushCloudState(merged);
+      } else {
+        await pushCloudState(current);
+      }
+      setLastSyncTime(new Date().toISOString());
+      networkStatus.resetPendingChanges();
+    } catch (e) {
+      console.warn('Background auto-sync on reconnect error:', e);
+    }
+  });
+
   // Push local updates to cloud
   const pushToCloud = useCallback(async (payload?: CloudSyncPayload) => {
     try {
       const dataToPush = payload || getCurrentPayload();
       await pushCloudState(dataToPush);
       setLastSyncTime(new Date().toISOString());
+      networkStatus.resetPendingChanges();
     } catch (err) {
       console.warn('Silent cloud sync push warning:', err);
     }
-  }, [getCurrentPayload]);
+  }, [getCurrentPayload, networkStatus]);
 
   // Debounced push ref
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -234,6 +257,7 @@ export default function App() {
         await pushCloudState(current);
         setLastSyncTime(new Date().toISOString());
       }
+      networkStatus.resetPendingChanges();
     } catch (err) {
       console.warn('Manual sync failed:', err);
       throw err;
@@ -323,7 +347,7 @@ export default function App() {
 
     // 4. Fast Background Polling every 4 seconds to ensure full consistency across tabs
     const interval = setInterval(async () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing) {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing && networkStatus.isOnline) {
         try {
           const remote = await fetchCloudState();
           if (remote && remote.lastUpdated) {
@@ -414,6 +438,11 @@ export default function App() {
 
     setCompletions(updated);
     saveStoredCompletions(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      completions: updated,
+    });
 
     if (nextState) {
       soundFX.playCheck();
@@ -463,6 +492,11 @@ export default function App() {
     const updated = [...customTasks, taskWithDate];
     setCustomTasks(updated);
     saveStoredCustomTasks(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      customTasks: updated,
+    });
     soundFX.playCheck();
   };
 
@@ -477,12 +511,22 @@ export default function App() {
     }
     setFamilyActivities(updated);
     saveStoredFamilyActivities(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyActivities: updated,
+    });
   };
 
   const handleDeleteFamilyActivity = (id: string) => {
     const updated = familyActivities.filter((a) => a.id !== id);
     setFamilyActivities(updated);
     saveStoredFamilyActivities(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyActivities: updated,
+    });
     soundFX.playPop();
   };
 
@@ -492,6 +536,11 @@ export default function App() {
     );
     setFamilyActivities(updated);
     saveStoredFamilyActivities(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyActivities: updated,
+    });
     soundFX.playCheck();
   };
 
@@ -500,6 +549,11 @@ export default function App() {
     const updated = [note, ...familyNotes];
     setFamilyNotes(updated);
     saveStoredFamilyNotes(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyNotes: updated,
+    });
   };
 
   const handleReactToNote = (noteId: string, reactionType: keyof FamilyNote['reactions']) => {
@@ -517,12 +571,22 @@ export default function App() {
     });
     setFamilyNotes(updated);
     saveStoredFamilyNotes(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyNotes: updated,
+    });
   };
 
   const handleDeleteNote = (noteId: string) => {
     const updated = familyNotes.filter((n) => n.id !== noteId);
     setFamilyNotes(updated);
     saveStoredFamilyNotes(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyNotes: updated,
+    });
     soundFX.playPop();
   };
 
@@ -548,6 +612,11 @@ export default function App() {
     const updated = [entry, ...bonusLogs];
     setBonusLogs(updated);
     saveStoredBonusLogs(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      bonusLogs: updated,
+    });
     soundFX.playFanfare();
   };
 
@@ -555,6 +624,11 @@ export default function App() {
     const updated = bonusLogs.filter((b) => b.id !== logId);
     setBonusLogs(updated);
     saveStoredBonusLogs(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      bonusLogs: updated,
+    });
     soundFX.playPop();
   };
 
@@ -571,6 +645,11 @@ export default function App() {
     };
     setWeeklyPayouts(updated);
     saveStoredWeeklyPayouts(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      weeklyPayouts: updated,
+    });
   };
 
   // Photo Evidences Handlers
@@ -578,7 +657,6 @@ export default function App() {
     const updated = [evidence, ...evidences];
     setEvidences(updated);
     saveStoredTaskEvidences(updated);
-    soundFX.playFanfare();
 
     // Automatically check off task if associated with a task
     if (evidence.taskId) {
@@ -592,6 +670,13 @@ export default function App() {
         saveStoredCompletions(updatedCompletions);
       }
     }
+
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      taskEvidences: updated,
+    });
+    soundFX.playFanfare();
 
     // Automatically send an alert in family chat as a Notice to Mom!
     const autoChatMessage: FamilyChatMessage = {
@@ -612,6 +697,11 @@ export default function App() {
     const updated = evidences.filter((e) => e.id !== evidenceId);
     setEvidences(updated);
     saveStoredTaskEvidences(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      taskEvidences: updated,
+    });
     soundFX.playPop();
   };
 
@@ -620,6 +710,11 @@ export default function App() {
     const updated = [fine, ...fines];
     setFines(updated);
     saveStoredFines(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      fines: updated,
+    });
     soundFX.playAlert();
 
     // Nan automatically publishes notice to the family chat!
@@ -650,6 +745,11 @@ export default function App() {
     });
     setFines(updated);
     saveStoredFines(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      fines: updated,
+    });
     soundFX.playChime();
   };
 
@@ -657,6 +757,11 @@ export default function App() {
     const updated = fines.filter((f) => f.id !== fineId);
     setFines(updated);
     saveStoredFines(updated);
+    networkStatus.recordLocalChange();
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      fines: updated,
+    });
     soundFX.playPop();
   };
 
@@ -818,6 +923,19 @@ export default function App() {
         isSyncing={isSyncing}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
         lastSyncTime={lastSyncTime}
+        isOnline={networkStatus.isOnline}
+        pendingChangesCount={networkStatus.pendingChangesCount}
+      />
+
+      {/* Network & Offline Resilience Indicator Bar */}
+      <NetworkStatusIndicator
+        isOnline={networkStatus.isOnline}
+        isReconnecting={networkStatus.isReconnecting}
+        justReconnected={networkStatus.justReconnected}
+        pendingChangesCount={networkStatus.pendingChangesCount}
+        onCheckConnection={networkStatus.checkConnectionNow}
+        onForceSync={handleManualSync}
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -849,6 +967,23 @@ export default function App() {
             activeFinesCount={activeFinesCount}
             onNavigateToFines={() => setActiveTab('fines')}
             onNavigateToEvidences={() => setActiveTab('photos')}
+            activeUser={activeUser}
+            onShareToChat={(text) => {
+              const senderName = 
+                activeUser === 'regina' ? 'Regina' : 
+                activeUser === 'romina' ? 'Romina' : 
+                activeUser === 'papa' ? 'Papá' : 
+                activeUser === 'policia_nan' ? 'Nan' : 'Mamá';
+              handleSendMessage({
+                id: `chat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                sender: senderName as any,
+                senderRole: activeUser as any,
+                text,
+                timestamp: new Date().toISOString(),
+              });
+            }}
+            isOnline={networkStatus.isOnline}
+            pendingChangesCount={networkStatus.pendingChangesCount}
           />
         )}
 
@@ -881,6 +1016,7 @@ export default function App() {
             onToggleExtraPaymentStatus={handleToggleExtraPaymentStatus}
             onDeleteExtraPayment={handleDeleteExtraPayment}
             activeUser={activeUser}
+            customTasks={customTasks}
           />
         )}
 
@@ -951,6 +1087,9 @@ export default function App() {
         onExportBackup={handleExportBackup}
         onImportBackup={handleImportBackup}
         activeUser={activeUser}
+        isOnline={networkStatus.isOnline}
+        pendingChangesCount={networkStatus.pendingChangesCount}
+        onCheckConnection={networkStatus.checkConnectionNow}
       />
 
       <AddCustomTaskModal

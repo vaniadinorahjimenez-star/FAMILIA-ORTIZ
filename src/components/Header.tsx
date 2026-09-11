@@ -17,7 +17,9 @@ import {
   Cloud,
   RefreshCw,
   UserCheck,
-  ChevronDown
+  ChevronDown,
+  WifiOff,
+  Wifi
 } from 'lucide-react';
 import { ChildId, FamilyUserId } from '../types';
 import { soundFX } from '../utils/audio';
@@ -49,6 +51,8 @@ interface HeaderProps {
   isSyncing?: boolean;
   onOpenSyncModal?: () => void;
   lastSyncTime?: string | null;
+  isOnline?: boolean;
+  pendingChangesCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -67,6 +71,8 @@ export const Header: React.FC<HeaderProps> = ({
   isSyncing = false,
   onOpenSyncModal,
   lastSyncTime,
+  isOnline = true,
+  pendingChangesCount = 0,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -203,18 +209,48 @@ export const Header: React.FC<HeaderProps> = ({
               {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-600" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
             </button>
 
-            {/* Cloud Sync Button */}
+            {/* Cloud / Network Sync Button */}
             {onOpenSyncModal && (
               <button
+                id="header-network-sync-btn"
                 onClick={onOpenSyncModal}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all shadow-2xs"
-                title="Sincronización multi-dispositivo familiar (Netlify)"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                  !isOnline
+                    ? 'border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900'
+                    : isSyncing
+                    ? 'border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                    : 'border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                }`}
+                title={
+                  !isOnline
+                    ? 'Modo sin red (Offline). Los avances se guardan en este dispositivo y se subirán al volver la red.'
+                    : isSyncing
+                    ? 'Sincronizando tareas en segundo plano...'
+                    : 'Conectado a la nube familiar'
+                }
               >
-                <Cloud className={`w-3.5 h-3.5 text-emerald-600 ${isSyncing ? 'animate-bounce' : ''}`} />
-                <span className="hidden md:inline">
-                  {isSyncing ? 'Sincronizando...' : 'Nube'}
-                </span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {!isOnline ? (
+                  <>
+                    <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                    <span className="hidden md:inline">Sin red</span>
+                    <span className="md:hidden">Local</span>
+                    {pendingChangesCount > 0 ? (
+                      <span className="bg-amber-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                        {pendingChangesCount}
+                      </span>
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'text-sky-600 animate-bounce' : 'text-emerald-600'}`} />
+                    <span className="hidden md:inline">
+                      {isSyncing ? 'Sincronizando...' : 'Nube'}
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-sky-500 animate-spin' : 'bg-emerald-500 animate-pulse'}`} />
+                  </>
+                )}
               </button>
             )}
 

@@ -7,11 +7,15 @@ import {
   Calendar, 
   DollarSign, 
   Heart,
-  TrendingUp
+  TrendingUp,
+  Target,
+  Flame
 } from 'lucide-react';
-import { ChildId, BonusLogEntry, WeekPayoutStatus, FineRecord, ExtraPaymentConcept } from '../types';
+import { ChildId, BonusLogEntry, WeekPayoutStatus, FineRecord, ExtraPaymentConcept, RoutineTask } from '../types';
 import { soundFX } from '../utils/audio';
+import { generateDailySchedule, formatDateKey } from '../utils/scheduleGenerator';
 import { ManualExtraPaymentsSection } from './ManualExtraPaymentsSection';
+import { WeeklyGoalProgress, ChildGoalData, CircularProgressRing } from './WeeklyGoalProgress';
 
 interface RewardsPanelProps {
   currentDate: Date;
@@ -27,6 +31,7 @@ interface RewardsPanelProps {
   onToggleExtraPaymentStatus?: (id: string) => void;
   onDeleteExtraPayment?: (id: string) => void;
   activeUser?: string;
+  customTasks?: RoutineTask[];
 }
 
 export const RewardsPanel: React.FC<RewardsPanelProps> = ({
@@ -43,6 +48,7 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
   onToggleExtraPaymentStatus,
   onDeleteExtraPayment,
   activeUser,
+  customTasks = [],
 }) => {
   // Compute Monday to Sunday dates of the current week
   const curr = new Date(currentDate);
@@ -73,47 +79,41 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
 
   const isPaid = !!weeklyPayouts[weekKey]?.paid;
 
-  // Calculate points for a child across the 7 days of this week
+  // Calculate points and task counts for a child across the 7 days of this week
   const calculateChildWeekStats = (childId: ChildId) => {
     let regularPoints = 0;
+    let totalWeekTasks = 0;
+    let completedTasksCount = 0;
     const dailyPoints: { date: Date; dateStr: string; dayName: string; points: number }[] = [];
     const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
     weekDays.forEach((dayDate, idx) => {
-      const y = dayDate.getFullYear();
-      const m = String(dayDate.getMonth() + 1).padStart(2, '0');
-      const d = String(dayDate.getDate()).padStart(2, '0');
-      const dateStr = `${y}-${m}-${d}`;
+      const dateStr = formatDateKey(dayDate);
+      
+      // Get base routine tasks for this day
+      const daySchedule = generateDailySchedule(dayDate).filter(
+        (t) => t.assignedTo === childId || t.assignedTo === 'both'
+      );
 
-      // In schedule:
-      // Mon, Wed, Fri: 5(teeth) + 15(walk) + (hasLuna? 10:0) + 15(gym prep) + 25(gym class) + 15(piano/duo) + 10(teeth/pajamas) = 85 to 95 pts
-      // Tue, Thu: 5 + 15 + (hasLuna? 10:0) + 15(piano/duo) + (thu? 20:0) + 10 = 45 to 75 pts
-      // Sat, Sun: 5 + 15 + (sun? 25 room:0) + 15(piano/duo) + 10 = 45 to 70 pts
-      // Total full week points ~450 pts. Let's make target 400 pts = 100% of $100 pesos!
+      // Custom tasks matching this day and child
+      const dayCustom = (customTasks || []).filter((t) => {
+        const matchesChild = t.assignedTo === childId || t.assignedTo === 'both';
+        const matchesDate = !t.id.includes('custom-date-') || t.id.includes(`custom-date-${dateStr}`);
+        return matchesChild && matchesDate;
+      });
+
+      const allDayTasks = [...daySchedule, ...dayCustom];
+      totalWeekTasks += allDayTasks.length;
+
       let dayPoints = 0;
-
-      // Filter all keys matching this date and child
-      Object.keys(completions).forEach((key) => {
-        if (key.endsWith(`_${childId}`)) {
-          // Check if completion is active
-          if (completions[key]) {
-            // Check if key corresponds to this day
-            // By convention, we can evaluate daily points or tally from tasks
-            // Let's award points according to the task definition
-            if (key.includes('romina-luna-morning') || key.includes('regina-luna-afternoon')) dayPoints += 15;
-            else if (key.includes('gym-class')) dayPoints += 25;
-            else if (key.includes('gym-prep')) dayPoints += 15;
-            else if (key.includes('sunday-room')) dayPoints += 25;
-            else if (key.includes('piano') || key.includes('duolingo')) dayPoints += 15;
-            else if (key.includes('water') || key.includes('food')) dayPoints += 10;
-            else if (key.includes('family-thursday')) dayPoints += 20;
-            else if (key.includes('teeth')) dayPoints += 5;
-            else if (key.includes('custom')) dayPoints += 15;
-          }
+      allDayTasks.forEach((task) => {
+        const taskKey = `${task.id}_${childId}`;
+        if (completions[taskKey]) {
+          dayPoints += task.points;
+          completedTasksCount++;
         }
       });
 
-      // To keep day-by-day proportional, scale or record
       dailyPoints.push({
         date: dayDate,
         dateStr,
@@ -159,6 +159,11 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
     const baseAllowanceEarned = Math.min(100, Math.round((routinePercent / 100) * 100));
     const totalWeeklyEarnings = Math.max(0, baseAllowanceEarned + bonusPesos - finesDeduction + extraPesosPending);
 
+    const pointsRemaining = Math.max(0, WEEKLY_ROUTINE_TARGET - regularPoints);
+    const avgPointsPerTask = 16.5;
+    const tasksRemainingToGoal = pointsRemaining <= 0 ? 0 : Math.ceil(pointsRemaining / avgPointsPerTask);
+    const isGoalReached = regularPoints >= WEEKLY_ROUTINE_TARGET;
+
     return {
       regularPoints,
       bonusPoints,
@@ -174,11 +179,49 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
       totalWeeklyEarnings,
       dailyPoints,
       childBonuses,
+      totalWeekTasks,
+      completedTasksCount,
+      targetPoints: WEEKLY_ROUTINE_TARGET,
+      pointsRemaining,
+      tasksRemainingToGoal,
+      isGoalReached,
     };
   };
 
   const rominaStats = calculateChildWeekStats('romina');
   const reginaStats = calculateChildWeekStats('regina');
+
+  const rominaGoal: ChildGoalData = {
+    childId: 'romina',
+    name: 'Romina',
+    age: 8,
+    theme: 'rose',
+    regularPoints: rominaStats.regularPoints,
+    targetPoints: rominaStats.targetPoints,
+    pointsRemaining: rominaStats.pointsRemaining,
+    routinePercent: rominaStats.routinePercent,
+    completedTasksCount: rominaStats.completedTasksCount,
+    totalWeekTasks: rominaStats.totalWeekTasks,
+    tasksRemainingToGoal: rominaStats.tasksRemainingToGoal,
+    isGoalReached: rominaStats.isGoalReached,
+    baseAllowanceEarned: rominaStats.baseAllowanceEarned,
+  };
+
+  const reginaGoal: ChildGoalData = {
+    childId: 'regina',
+    name: 'Regina',
+    age: 10,
+    theme: 'purple',
+    regularPoints: reginaStats.regularPoints,
+    targetPoints: reginaStats.targetPoints,
+    pointsRemaining: reginaStats.pointsRemaining,
+    routinePercent: reginaStats.routinePercent,
+    completedTasksCount: reginaStats.completedTasksCount,
+    totalWeekTasks: reginaStats.totalWeekTasks,
+    tasksRemainingToGoal: reginaStats.tasksRemainingToGoal,
+    isGoalReached: reginaStats.isGoalReached,
+    baseAllowanceEarned: reginaStats.baseAllowanceEarned,
+  };
 
   const handleToggle = () => {
     onTogglePayout(weekKey);
@@ -230,6 +273,13 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
         </div>
       </div>
 
+      {/* Visual Weekly Goal Component (Circular & Linear Progress with Tasks Remaining) */}
+      <WeeklyGoalProgress
+        rominaGoal={rominaGoal}
+        reginaGoal={reginaGoal}
+        selectedChild={selectedChild}
+      />
+
       {/* Two Daughter Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Romina's Rewards Box */}
@@ -260,23 +310,51 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
               </div>
             </div>
 
-            {/* Weekly Routine Progress */}
+            {/* Weekly Routine Progress with Mini Circular Ring */}
             <div className="space-y-2 mb-4 bg-rose-50/50 p-4 rounded-2xl border border-rose-100">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-600">Avance de rutinas de la semana:</span>
-                <span className="text-rose-700">{rominaStats.routinePercent}%</span>
+                <div className="flex items-center gap-1.5 text-slate-700">
+                  <Target className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Avance de rutinas de la semana:</span>
+                </div>
+                <span className="text-rose-700 font-extrabold">{rominaStats.routinePercent}%</span>
               </div>
 
-              <div className="w-full h-3 bg-rose-200/80 rounded-full overflow-hidden p-0.5">
-                <div
-                  className="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full transition-all duration-500"
-                  style={{ width: `${rominaStats.routinePercent}%` }}
-                />
-              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <div className="flex-shrink-0">
+                  <CircularProgressRing
+                    percent={rominaStats.routinePercent}
+                    size={58}
+                    strokeWidth={6}
+                    color="rose"
+                    isCompleted={rominaStats.isGoalReached}
+                    centerTopText={`${rominaStats.routinePercent}%`}
+                    centerSubText=""
+                  />
+                </div>
 
-              <div className="flex justify-between text-[11px] text-slate-500 pt-1">
-                <span>{rominaStats.regularPoints} pts de rutinas</span>
-                <span>Objetivo: 350 pts = $100 pesos</span>
+                <div className="flex-1 space-y-1.5">
+                  <div className="w-full h-3 bg-rose-200/80 rounded-full overflow-hidden p-0.5">
+                    <div
+                      className="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full transition-all duration-500"
+                      style={{ width: `${rominaStats.routinePercent}%` }}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
+                    <span>{rominaStats.regularPoints} de {rominaStats.targetPoints} pts</span>
+                    {rominaStats.isGoalReached ? (
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        ¡Meta alcanzada! ($100 MXN)
+                      </span>
+                    ) : (
+                      <span className="text-rose-700 font-bold bg-rose-100/80 px-2 py-0.5 rounded-md">
+                        Faltan {rominaStats.tasksRemainingToGoal} {rominaStats.tasksRemainingToGoal === 1 ? 'tarea' : 'tareas'} (~{rominaStats.pointsRemaining} pts)
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -372,23 +450,51 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
               </div>
             </div>
 
-            {/* Weekly Routine Progress */}
+            {/* Weekly Routine Progress with Mini Circular Ring */}
             <div className="space-y-2 mb-4 bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-600">Avance de rutinas de la semana:</span>
-                <span className="text-purple-700">{reginaStats.routinePercent}%</span>
+                <div className="flex items-center gap-1.5 text-slate-700">
+                  <Target className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Avance de rutinas de la semana:</span>
+                </div>
+                <span className="text-purple-700 font-extrabold">{reginaStats.routinePercent}%</span>
               </div>
 
-              <div className="w-full h-3 bg-purple-200/80 rounded-full overflow-hidden p-0.5">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transition-all duration-500"
-                  style={{ width: `${reginaStats.routinePercent}%` }}
-                />
-              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <div className="flex-shrink-0">
+                  <CircularProgressRing
+                    percent={reginaStats.routinePercent}
+                    size={58}
+                    strokeWidth={6}
+                    color="purple"
+                    isCompleted={reginaStats.isGoalReached}
+                    centerTopText={`${reginaStats.routinePercent}%`}
+                    centerSubText=""
+                  />
+                </div>
 
-              <div className="flex justify-between text-[11px] text-slate-500 pt-1">
-                <span>{reginaStats.regularPoints} pts de rutinas</span>
-                <span>Objetivo: 350 pts = $100 pesos</span>
+                <div className="flex-1 space-y-1.5">
+                  <div className="w-full h-3 bg-purple-200/80 rounded-full overflow-hidden p-0.5">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${reginaStats.routinePercent}%` }}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
+                    <span>{reginaStats.regularPoints} de {reginaStats.targetPoints} pts</span>
+                    {reginaStats.isGoalReached ? (
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        ¡Meta alcanzada! ($100 MXN)
+                      </span>
+                    ) : (
+                      <span className="text-purple-700 font-bold bg-purple-100/80 px-2 py-0.5 rounded-md">
+                        Faltan {reginaStats.tasksRemainingToGoal} {reginaStats.tasksRemainingToGoal === 1 ? 'tarea' : 'tareas'} (~{reginaStats.pointsRemaining} pts)
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

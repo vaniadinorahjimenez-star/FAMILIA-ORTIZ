@@ -4,9 +4,130 @@ import fs from 'fs';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
+import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 const PORT = 3000;
+
+// Lazy initialization of Gemini client
+let geminiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI | null {
+  if (!geminiClient && process.env.GEMINI_API_KEY) {
+    geminiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return geminiClient;
+}
+
+// Fallback curated facts for offline or instant delivery
+interface FunFactPayload {
+  title: string;
+  fact: string;
+  category: 'dogs' | 'science';
+  didYouKnow: string;
+  encouragement: string;
+  emoji: string;
+  source: 'gemini' | 'curated';
+}
+
+const CURATED_FACTS: FunFactPayload[] = [
+  {
+    title: '¡Super olfato perruno! 🐾👃',
+    fact: 'El sentido del olfato de perritas como Luna es hasta 100,000 veces más potente que el de los humanos. ¡Pueden oler una gota de agua azucarada en una piscina olímpica!',
+    category: 'dogs',
+    didYouKnow: 'La nariz de cada perro tiene un patrón único, ¡como la huella dactilar de un humano!',
+    encouragement: '¡Romina y Regina, con ese mismo superpoder van a terminar sus tareas hoy!',
+    emoji: '🐶',
+    source: 'curated',
+  },
+  {
+    title: '¡Los poodles son genios peludos! 🐩✨',
+    fact: 'Los Poodles (como Luna) son considerados la segunda raza de perros más inteligente de todo el planeta. ¡Pueden aprender trucos nuevos en menos de 5 repeticiones!',
+    category: 'dogs',
+    didYouKnow: 'El pelaje rizado de los poodles nunca deja de crecer y casi no suelta pelo, por eso son hipoalergénicos.',
+    encouragement: '¡Luna está súper orgullosa de ver cómo aprenden cada día en sus rutinas!',
+    emoji: '🐩',
+    source: 'curated',
+  },
+  {
+    title: '¿Los perros sueñan? 💤🐶',
+    fact: 'Cuando ves a Luna mover sus patitas o hacer ruiditos dormida, ¡está en fase REM soñando! Los científicos descubrieron que los perros sueñan con correr, jugar con sus humanas favoritas y comer premios.',
+    category: 'dogs',
+    didYouKnow: 'Los cachorros y perros pequeños sueñan más seguido que los perros gigantes.',
+    encouragement: '¡A cumplir las metas del día para tener los sueños más felices esta noche!',
+    emoji: '🐾',
+    source: 'curated',
+  },
+  {
+    title: '¡Orejas con 18 supermúsculos! 🐕👂',
+    fact: 'Los perros tienen más de 18 músculos en cada oreja. Por eso pueden moverlas en todas direcciones como antenas de radar para escuchar sonidos que nosotros ni imaginamos.',
+    category: 'dogs',
+    didYouKnow: 'Pueden escuchar sonidos a cuatro veces más distancia que los humanos.',
+    encouragement: '¡Atentas como radar para ganar todos los puntos de hoy!',
+    emoji: '👂',
+    source: 'curated',
+  },
+  {
+    title: '¡Lluvia de diamantes en el espacio! 💎🪐',
+    fact: 'En planetas gigantes como Neptuno y Saturno, la presión y temperatura son tan intensas que el carbono se comprime en el aire y ¡llueven diamantes reales del cielo!',
+    category: 'science',
+    didYouKnow: '¡En Júpiter y Saturno podrían formarse hasta 1,000 toneladas de diamantes al año!',
+    encouragement: '¡El universo está lleno de magia científica! ¡A brillar en sus tareas, chicas!',
+    emoji: '🪐',
+    source: 'curated',
+  },
+  {
+    title: '¡El corazón de un colibrí! 💓🌸',
+    fact: 'El corazón de un pequeño colibrí puede latir hasta 1,260 veces por minuto mientras vuela y aletea 80 veces por segundo. ¡Es el motor biológico más rápido!',
+    category: 'science',
+    didYouKnow: 'Los colibríes son las únicas aves capaces de volar hacia atrás y de cabeza.',
+    encouragement: '¡Con esa misma energía y velocidad van a terminar gimnasia y piano hoy!',
+    emoji: '✨',
+    source: 'curated',
+  },
+  {
+    title: '¡Los pulpos tienen tres corazones! 🐙💙',
+    fact: 'Los pulpos tienen tres corazones y su sangre es de color azul porque usan cobre para transportar oxígeno. Además, dos tercios de sus neuronas están en sus tentáculos.',
+    category: 'science',
+    didYouKnow: '¡Si un pulpo pierde un tentáculo, puede regenerarlo por completo!',
+    encouragement: '¡Regina y Romina son súper inteligentes y curiosas como los científicos!',
+    emoji: '🐙',
+    source: 'curated',
+  },
+  {
+    title: '¡La Luna se aleja de la Tierra! 🌕🚀',
+    fact: 'Cada año, la Luna se aleja aproximadamente 3.8 centímetros de la Tierra (más o menos la velocidad a la que crecen tus uñas). ¡Hace millones de años se veía gigantesca en el cielo!',
+    category: 'science',
+    didYouKnow: 'En la Luna no hay viento, por lo que las pisadas de los astronautas durarán millones de años.',
+    encouragement: '¡Paso a pasito, cada tarea completada las acerca a la meta de la semana!',
+    emoji: '🚀',
+    source: 'curated',
+  },
+  {
+    title: '¿Por qué bostezan los perros? 🐶🥱',
+    fact: 'Cuando un perro bosteza no siempre tiene sueño; muchas veces lo hace para calmarse a sí mismo o para decirte "estoy tranquilo contigo". Además, ¡el bostezo humano también es contagioso para ellos!',
+    category: 'dogs',
+    didYouKnow: 'Si finges un bostezo frente a un perrito que te quiere mucho, ¡probablemente él también bostezará!',
+    encouragement: '¡Luna les manda un lengüetazo lleno de cariño para motivarlas hoy!',
+    emoji: '🐕',
+    source: 'curated',
+  },
+  {
+    title: '¡El ADN de los plátanos y humanos! 🍌🧬',
+    fact: '¡Los seres humanos compartimos aproximadamente el 50% de nuestro ADN con los plátanos! Esto demuestra que todas las formas de vida en la Tierra estamos conectadas por la evolución.',
+    category: 'science',
+    didYouKnow: '¡Con los chimpancés compartimos casi el 99% de nuestro código genético!',
+    encouragement: '¡A comer una fruta rica y recargar pilas para las actividades!',
+    emoji: '🔬',
+    source: 'curated',
+  }
+];
 
 // Middleware for parsing JSON with generous payload limits for photos/evidences
 app.use(express.json({ limit: '50mb' }));
@@ -269,6 +390,84 @@ app.get('/api/health', (req, res) => {
     connectedSse: sseClients.size,
     chatMessagesCount: dbState.familyChat.length,
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Fun Fact of the Day API (Gemini-powered with curated fallback)
+app.get('/api/fun-fact', async (req, res) => {
+  const requestedTopic = ((req.query.topic as string) || 'any').toLowerCase();
+  const child = ((req.query.child as string) || 'both').toLowerCase();
+  
+  const chosenCategory: 'dogs' | 'science' = 
+    requestedTopic === 'dogs' 
+      ? 'dogs' 
+      : requestedTopic === 'science' 
+        ? 'science' 
+        : Math.random() > 0.5 ? 'dogs' : 'science';
+
+  const ai = getGeminiClient();
+
+  if (ai) {
+    try {
+      const topicDescription = chosenCategory === 'dogs'
+        ? 'perritos, cachorros, sentidos caninos o razas inteligentes como la French Poodle (como Luna, una perrita blanca con orejitas negras)'
+        : 'la ciencia, el espacio exterior, animales asombrosos, inventos curiosos, el cuerpo humano o la naturaleza';
+
+      const prompt = `Eres un asistente educativo y cariñoso para dos niñas mexicanas: Regina (10 años, hace gimnasia y le gusta aprender) y Romina (8 años, ama a su perrita Luna French Poodle y el piano).
+Genera UN dato curioso súper fascinante, entretenido y motivador sobre ${topicDescription}.
+Debe ser 100% verídico, fácil de entender para niñas de 8 a 10 años, alegre y positivo.
+Responde ÚNICAMENTE un objeto JSON válido con este formato exacto, sin formato markdown adicional:
+{
+  "title": "Título llamativo y divertido con emojis",
+  "fact": "El dato curioso explicado en 2 o 3 oraciones sencillas y fascinantes.",
+  "category": "${chosenCategory}",
+  "didYouKnow": "¿Sabías que...? frase corta y sorprendente",
+  "encouragement": "Una frase corta y dulce de ánimo para Regina y Romina para completar sus tareas del día",
+  "emoji": "Un emoji representativo (como 🐶, 🐩, 🚀, 🪐, 🔬, 🧬, 🐾, 🐬, 🌋)"
+}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          temperature: 0.85,
+        },
+      });
+
+      const responseText = response.text?.trim() || '';
+      // Clean possible markdown code fences
+      const cleanJson = responseText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      if (parsed && parsed.fact && parsed.title) {
+        res.json({
+          success: true,
+          title: parsed.title,
+          fact: parsed.fact,
+          category: parsed.category || chosenCategory,
+          didYouKnow: parsed.didYouKnow || '¡La ciencia y la naturaleza son increíbles!',
+          encouragement: parsed.encouragement || '¡A conquistar las tareas de hoy con una sonrisa!',
+          emoji: parsed.emoji || (chosenCategory === 'dogs' ? '🐶' : '🔬'),
+          source: 'gemini',
+        });
+        return;
+      }
+    } catch (err: any) {
+      console.warn('[Gemini Fun Fact] Falling back to curated fact:', err?.message || err);
+    }
+  }
+
+  // Fallback to curated high-quality facts
+  const matchingFacts = CURATED_FACTS.filter((f) => 
+    requestedTopic === 'any' ? true : f.category === chosenCategory
+  );
+  const pool = matchingFacts.length > 0 ? matchingFacts : CURATED_FACTS;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+
+  res.json({
+    success: true,
+    ...picked,
+    source: 'curated',
   });
 });
 
