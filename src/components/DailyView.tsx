@@ -24,6 +24,7 @@ import {
 import { RoutineTask, ChildId, FamilyActivity, BonusLogEntry } from '../types';
 import { soundFX } from '../utils/audio';
 import { formatDateKey } from '../utils/scheduleGenerator';
+import { LunaFrenchPoodle } from './LunaFrenchPoodle';
 
 interface DailyViewProps {
   currentDate: Date;
@@ -422,13 +423,18 @@ export const DailyView: React.FC<DailyViewProps> = ({
         {hasLunaDuty && (
           <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-100/90 via-sky-50 to-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-amber-500 text-white rounded-2xl shadow-sm">
-                <Dog className="w-6 h-6" />
+              <div className="w-14 h-14 bg-white rounded-2xl border border-amber-200 shadow-xs flex items-center justify-center p-1 flex-shrink-0">
+                <LunaFrenchPoodle size="sm" showBark={false} />
               </div>
               <div>
-                <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md mb-0.5">
-                  Misión especial de hoy (Cada 2 días)
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md mb-0.5">
+                    Misión especial de hoy (Cada 2 días)
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500">
+                    French Poodle blanca con orejitas negritas 🐩🤍🖤
+                  </span>
+                </div>
                 <h4 className="text-sm font-bold text-slate-800">
                   ¡Hoy toca cuidado profundo de Luna! 🐶
                 </h4>

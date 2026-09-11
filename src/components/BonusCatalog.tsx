@@ -19,7 +19,8 @@ import {
   RotateCw,
   Clock,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  X
 } from 'lucide-react';
 import { ScreenFreeBonus, ChildId, BonusLogEntry } from '../types';
 import { SCREEN_FREE_BONUSES, formatDateKey } from '../utils/scheduleGenerator';
@@ -461,19 +462,35 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
 
       {/* Modal for Inventing Custom Bonus */}
       {showCustomModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border-2 border-amber-300 animate-in zoom-in-95">
-            <h4 className="text-xl font-bold font-['Fredoka',sans-serif] text-slate-800 mb-1">
-              Inventar Actividad Sin Pantalla
-            </h4>
-            <p className="text-xs text-slate-500 mb-4">
-              Crea una actividad divertida que no use pantallas y ponle su recompensa.
-            </p>
+        <div 
+          onClick={() => setShowCustomModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border-2 border-amber-300 relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+          >
+            <button
+              onClick={() => setShowCustomModal(false)}
+              className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
+              aria-label="Cerrar"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-            <form onSubmit={handleCreateCustom} className="space-y-4">
+            <div>
+              <h4 className="text-base sm:text-lg font-bold font-['Fredoka',sans-serif] text-slate-800 mb-0.5 pr-6">
+                Inventar Actividad Sin Pantalla ✨
+              </h4>
+              <p className="text-[11px] text-slate-500 mb-3">
+                Crea una actividad divertida que no use pantallas y ponle su recompensa.
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateCustom} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  ¿Qué actividad hizo?
+                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                  ¿Qué actividad hizo? *
                 </label>
                 <input
                   type="text"
@@ -481,13 +498,13 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
                   placeholder="Ej: Ayudó a bañar a Luna, hizo cartas para los abuelos..."
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
                     Puntos extras
                   </label>
                   <input
@@ -497,13 +514,13 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
                     step="5"
                     value={customPoints}
                     onChange={(e) => setCustomPoints(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Pesos de bono ($ MXN)
+                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                    Pesos ($ MXN)
                   </label>
                   <input
                     type="number"
@@ -511,29 +528,29 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
                     max="30"
                     value={customPesos}
                     onChange={(e) => setCustomPesos(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCustomModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs"
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={activeChildClaimedToday}
-                  className={`px-5 py-2 rounded-xl font-bold text-xs shadow ${
+                  className={`px-4 py-1.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer ${
                     activeChildClaimedToday
-                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       : 'bg-amber-500 hover:bg-amber-600 text-white'
                   }`}
                 >
-                  {activeChildClaimedToday ? 'Límite diario alcanzado' : 'Guardar y Reclamar'}
+                  {activeChildClaimedToday ? 'Límite alcanzado' : 'Guardar y Reclamar'}
                 </button>
               </div>
             </form>

@@ -6,7 +6,8 @@ import {
   RoutineTask, 
   TaskEvidence, 
   FineRecord, 
-  FamilyChatMessage 
+  FamilyChatMessage,
+  ExtraPaymentConcept 
 } from '../types';
 import { INSPIRING_FAMILY_ACTIVITIES } from './scheduleGenerator';
 
@@ -20,6 +21,7 @@ const STORAGE_KEYS = {
   TASK_EVIDENCES: 'rr_task_evidences_v1',
   FINES: 'rr_fines_v1',
   FAMILY_CHAT: 'rr_family_chat_v1',
+  EXTRA_PAYMENTS: 'rr_extra_payments_v1',
 };
 
 // Initial default notes for the Gratitude & Thoughts Wall
@@ -388,6 +390,57 @@ export function getStoredFamilyChat(): FamilyChatMessage[] {
 export function saveStoredFamilyChat(messages: FamilyChatMessage[]) {
   try {
     localStorage.setItem(STORAGE_KEYS.FAMILY_CHAT, JSON.stringify(messages));
+  } catch {
+    // safely ignore
+  }
+}
+
+// ==========================================
+// OTROS CONCEPTOS DE PAGO MANUALES
+// ==========================================
+
+export function getStoredExtraPayments(): ExtraPaymentConcept[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.EXTRA_PAYMENTS);
+    if (!raw) {
+      const initialExtraPayments: ExtraPaymentConcept[] = [
+        {
+          id: 'pay-extra-seed-1',
+          concept: 'Lavar y aspirar el coche con papá',
+          amount: 35,
+          childId: 'regina',
+          date: '2026-09-08',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+          category: 'auto',
+          registeredBy: 'Papá',
+          status: 'pagado',
+          notes: 'Ayudó con la manguera y a secar los cristales con toalla.',
+        },
+        {
+          id: 'pay-extra-seed-2',
+          concept: 'Ayudar a desempacar y acomodar la despensa del súper',
+          amount: 25,
+          childId: 'romina',
+          date: '2026-09-09',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(),
+          category: 'mandado',
+          registeredBy: 'Mamá',
+          status: 'pendiente',
+          notes: 'Acomodó las frutas y cajas en la alacena.',
+        },
+      ];
+      localStorage.setItem(STORAGE_KEYS.EXTRA_PAYMENTS, JSON.stringify(initialExtraPayments));
+      return initialExtraPayments;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredExtraPayments(payments: ExtraPaymentConcept[]) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.EXTRA_PAYMENTS, JSON.stringify(payments));
   } catch {
     // safely ignore
   }

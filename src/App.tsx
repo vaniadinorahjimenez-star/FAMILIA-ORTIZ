@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   ChildId, 
   RoutineTask, 
@@ -13,7 +13,10 @@ import {
   BonusLogEntry,
   TaskEvidence,
   FineRecord,
-  FamilyChatMessage
+  FamilyChatMessage,
+  FamilyUserId,
+  CloudSyncPayload,
+  ExtraPaymentConcept
 } from './types';
 import { 
   generateDailySchedule, 
@@ -39,9 +42,18 @@ import {
   getStoredFines,
   saveStoredFines,
   getStoredFamilyChat,
-  saveStoredFamilyChat
+  saveStoredFamilyChat,
+  getStoredExtraPayments,
+  saveStoredExtraPayments
 } from './utils/storage';
 import { soundFX } from './utils/audio';
+import { getStoredActiveUser, saveStoredActiveUser } from './utils/familyUsers';
+import { 
+  fetchCloudState, 
+  pushCloudState, 
+  mergeCloudData, 
+  getStoredRoomId 
+} from './utils/cloudSync';
 
 import { Header, ActiveTab } from './components/Header';
 import { DailyView } from './components/DailyView';
@@ -52,17 +64,27 @@ import { FamilyNotesBoard } from './components/FamilyNotesBoard';
 import { AddCustomTaskModal } from './components/AddCustomTaskModal';
 import { FamilyActivitiesModal } from './components/FamilyActivitiesModal';
 import { CelebrationModal } from './components/CelebrationModal';
+import { TaskCheckCelebrationModal } from './components/TaskCheckCelebrationModal';
 import { RouletteModal } from './components/RouletteModal';
 import { UploadEvidenceModal } from './components/UploadEvidenceModal';
 import { TaskEvidencesView } from './components/TaskEvidencesView';
 import { FinesPolicePanel } from './components/FinesPolicePanel';
 import { FamilyChatView } from './components/FamilyChatView';
+import { FamilySyncModal } from './components/FamilySyncModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('daily');
   const [selectedChild, setSelectedChild] = useState<ChildId | 'both'>('both');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Active Family User on this device (Default: Mamá)
+  const [activeUser, setActiveUser] = useState<FamilyUserId>(() => getStoredActiveUser());
+
+  // Cloud Sync state
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   // Stored state
   const [completions, setCompletions] = useState<Record<string, boolean>>(() => getStoredCompletions());
@@ -74,6 +96,7 @@ export default function App() {
   const [evidences, setEvidences] = useState<TaskEvidence[]>(() => getStoredTaskEvidences());
   const [fines, setFines] = useState<FineRecord[]>(() => getStoredFines());
   const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>(() => getStoredFamilyChat());
+  const [extraPayments, setExtraPayments] = useState<ExtraPaymentConcept[]>(() => getStoredExtraPayments());
 
   // Modal states
   const [isAddCustomOpen, setIsAddCustomOpen] = useState(false);
@@ -98,6 +121,197 @@ export default function App() {
     childName: '',
     points: 0,
   });
+
+  const [taskCelebration, setTaskCelebration] = useState<{
+    isOpen: boolean;
+    task: RoutineTask | null;
+    childId: ChildId;
+  }>({
+    isOpen: false,
+    task: null,
+    childId: 'romina',
+  });
+
+  // Handle active user change
+  const handleUserChange = (newUser: FamilyUserId) => {
+    setActiveUser(newUser);
+    saveStoredActiveUser(newUser);
+  };
+
+  // Helper to construct current bundle
+  const getCurrentPayload = useCallback((): CloudSyncPayload => ({
+    completions,
+    familyActivities,
+    familyNotes,
+    bonusLogs,
+    customTasks,
+    weeklyPayouts,
+    taskEvidences: evidences,
+    fines,
+    familyChat: chatMessages,
+    extraPayments,
+    lastUpdated: new Date().toISOString(),
+    updatedBy: activeUser,
+  }), [completions, familyActivities, familyNotes, bonusLogs, customTasks, weeklyPayouts, evidences, fines, chatMessages, extraPayments, activeUser]);
+
+  // Apply merged cloud data to state & storage
+  const applyMergedPayload = useCallback((merged: CloudSyncPayload) => {
+    if (merged.completions) {
+      setCompletions(merged.completions);
+      saveStoredCompletions(merged.completions);
+    }
+    if (merged.familyActivities) {
+      setFamilyActivities(merged.familyActivities);
+      saveStoredFamilyActivities(merged.familyActivities);
+    }
+    if (merged.familyNotes) {
+      setFamilyNotes(merged.familyNotes);
+      saveStoredFamilyNotes(merged.familyNotes);
+    }
+    if (merged.bonusLogs) {
+      setBonusLogs(merged.bonusLogs);
+      saveStoredBonusLogs(merged.bonusLogs);
+    }
+    if (merged.customTasks) {
+      setCustomTasks(merged.customTasks);
+      saveStoredCustomTasks(merged.customTasks);
+    }
+    if (merged.weeklyPayouts) {
+      setWeeklyPayouts(merged.weeklyPayouts);
+      saveStoredWeeklyPayouts(merged.weeklyPayouts);
+    }
+    if (merged.taskEvidences) {
+      setEvidences(merged.taskEvidences);
+      saveStoredTaskEvidences(merged.taskEvidences);
+    }
+    if (merged.fines) {
+      setFines(merged.fines);
+      saveStoredFines(merged.fines);
+    }
+    if (merged.familyChat) {
+      setChatMessages(merged.familyChat);
+      saveStoredFamilyChat(merged.familyChat);
+    }
+    if (merged.extraPayments) {
+      setExtraPayments(merged.extraPayments);
+      saveStoredExtraPayments(merged.extraPayments);
+    }
+    setLastSyncTime(new Date().toISOString());
+  }, []);
+
+  // Push local updates to cloud
+  const pushToCloud = useCallback(async (payload?: CloudSyncPayload) => {
+    try {
+      const dataToPush = payload || getCurrentPayload();
+      await pushCloudState(dataToPush);
+      setLastSyncTime(new Date().toISOString());
+    } catch (err) {
+      console.warn('Silent cloud sync push warning:', err);
+    }
+  }, [getCurrentPayload]);
+
+  // Debounced push ref
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const triggerDebouncedPush = useCallback((payload: CloudSyncPayload) => {
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(() => {
+      pushToCloud(payload);
+    }, 1200);
+  }, [pushToCloud]);
+
+  // Manual sync handler
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const remote = await fetchCloudState();
+      const current = getCurrentPayload();
+      if (remote) {
+        const merged = mergeCloudData(current, remote);
+        applyMergedPayload(merged);
+        await pushCloudState(merged);
+      } else {
+        await pushCloudState(current);
+        setLastSyncTime(new Date().toISOString());
+      }
+    } catch (err) {
+      console.warn('Manual sync failed:', err);
+      throw err;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Initial and periodic sync pull (every 8 seconds if active)
+  useEffect(() => {
+    // Initial sync
+    const initialSync = async () => {
+      try {
+        const remote = await fetchCloudState();
+        if (remote) {
+          const current = getCurrentPayload();
+          const merged = mergeCloudData(current, remote);
+          applyMergedPayload(merged);
+        } else {
+          pushToCloud();
+        }
+      } catch {
+        // safely ignore on boot
+      }
+    };
+    initialSync();
+
+    // Background polling
+    const interval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing) {
+        try {
+          const remote = await fetchCloudState();
+          if (remote && remote.lastUpdated) {
+            const current = getCurrentPayload();
+            // If remote has newer update or differs, merge
+            const merged = mergeCloudData(current, remote);
+            applyMergedPayload(merged);
+          }
+        } catch {
+          // silent background check
+        }
+      }
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []); // Run once on mount
+
+  // Export complete family backup JSON
+  const handleExportBackup = () => {
+    const payload = getCurrentPayload();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `familia_jimenez_respaldo_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    soundFX.playFanfare();
+  };
+
+  // Import family backup JSON
+  const handleImportBackup = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsed = JSON.parse(content) as CloudSyncPayload;
+        if (parsed) {
+          applyMergedPayload(parsed);
+          await pushCloudState(parsed);
+          soundFX.playFanfare();
+          alert('¡Respaldo familiar restaurado con éxito y sincronizado en la nube!');
+        }
+      } catch (err) {
+        alert('El archivo no tiene un formato válido de respaldo familiar.');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   // Sync sound setting
   useEffect(() => {
@@ -141,6 +355,16 @@ export default function App() {
     if (nextState) {
       soundFX.playCheck();
 
+      // Trigger Luna celebration animation with motivational phrase for this task
+      const currentTask = dailyTasks.find((t) => t.id === taskId);
+      if (currentTask) {
+        setTaskCelebration({
+          isOpen: true,
+          task: currentTask,
+          childId,
+        });
+      }
+
       // Check if this action triggers 100% completion for this child on this day!
       const childTasks = dailyTasks.filter(
         (t) => t.assignedTo === childId || t.assignedTo === 'both'
@@ -153,11 +377,13 @@ export default function App() {
 
       if (allDone && childTasks.length > 0) {
         const totalPointsToday = childTasks.reduce((acc, t) => acc + t.points, 0);
-        setCelebrationState({
-          isOpen: true,
-          childName: childId === 'romina' ? 'Romina' : 'Regina',
-          points: totalPointsToday,
-        });
+        setTimeout(() => {
+          setCelebrationState({
+            isOpen: true,
+            childName: childId === 'romina' ? 'Romina' : 'Regina',
+            points: totalPointsToday,
+          });
+        }, 1200);
       }
     } else {
       soundFX.playPop();
@@ -376,12 +602,20 @@ export default function App() {
     const updated = [...chatMessages, msg];
     setChatMessages(updated);
     saveStoredFamilyChat(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyChat: updated,
+    });
   };
 
   const handleDeleteMessage = (id: string) => {
     const updated = chatMessages.filter((m) => m.id !== id);
     setChatMessages(updated);
     saveStoredFamilyChat(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyChat: updated,
+    });
     soundFX.playPop();
   };
 
@@ -401,13 +635,84 @@ export default function App() {
     });
     setChatMessages(updated);
     saveStoredFamilyChat(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyChat: updated,
+    });
     soundFX.playPop();
+  };
+
+  // Mamá notice approval handler
+  const handleMamaApproveNotice = (messageId: string, comment?: string) => {
+    const updated = chatMessages.map((m) => {
+      if (m.id === messageId) {
+        return {
+          ...m,
+          reviewedByMama: true,
+          mamaComment: comment,
+          mamaApprovedAt: new Date().toISOString(),
+        };
+      }
+      return m;
+    });
+    setChatMessages(updated);
+    saveStoredFamilyChat(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      familyChat: updated,
+    });
   };
 
   // Active fines count
   const activeFinesCount = useMemo(() => {
     return fines.filter((f) => f.status === 'activa').length;
   }, [fines]);
+
+  // Extra manual payment handlers
+  const handleAddExtraPayment = (payment: Omit<ExtraPaymentConcept, 'id' | 'timestamp'>) => {
+    const newPayment: ExtraPaymentConcept = {
+      ...payment,
+      id: `ext_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+    };
+    const updated = [newPayment, ...extraPayments];
+    setExtraPayments(updated);
+    saveStoredExtraPayments(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      extraPayments: updated,
+    });
+  };
+
+  const handleToggleExtraPaymentStatus = (id: string) => {
+    const updated = extraPayments.map((p) => {
+      if (p.id === id) {
+        const nextStatus = p.status === 'pendiente' ? 'pagado' : 'pendiente';
+        return {
+          ...p,
+          status: nextStatus,
+          paidAt: nextStatus === 'pagado' ? new Date().toISOString() : undefined,
+        };
+      }
+      return p;
+    });
+    setExtraPayments(updated);
+    saveStoredExtraPayments(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      extraPayments: updated,
+    });
+  };
+
+  const handleDeleteExtraPayment = (id: string) => {
+    const updated = extraPayments.filter((p) => p.id !== id);
+    setExtraPayments(updated);
+    saveStoredExtraPayments(updated);
+    triggerDebouncedPush({
+      ...getCurrentPayload(),
+      extraPayments: updated,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-amber-50/40 text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
@@ -426,6 +731,11 @@ export default function App() {
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
         activeFinesCount={activeFinesCount}
+        activeUser={activeUser}
+        onUserChange={handleUserChange}
+        isSyncing={isSyncing}
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
+        lastSyncTime={lastSyncTime}
       />
 
       {/* Main Content Area */}
@@ -484,6 +794,11 @@ export default function App() {
             weeklyPayouts={weeklyPayouts}
             onTogglePayout={handleTogglePayout}
             onNavigateToFines={() => setActiveTab('fines')}
+            extraPayments={extraPayments}
+            onAddExtraPayment={handleAddExtraPayment}
+            onToggleExtraPaymentStatus={handleToggleExtraPaymentStatus}
+            onDeleteExtraPayment={handleDeleteExtraPayment}
+            activeUser={activeUser}
           />
         )}
 
@@ -528,6 +843,9 @@ export default function App() {
             onSendMessage={handleSendMessage}
             onDeleteMessage={handleDeleteMessage}
             onAddReaction={handleAddReaction}
+            onMamaApproveNotice={handleMamaApproveNotice}
+            activeUser={activeUser}
+            onSwitchUser={handleUserChange}
           />
         )}
 
@@ -542,6 +860,17 @@ export default function App() {
       </main>
 
       {/* Modals */}
+      <FamilySyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        isSyncing={isSyncing}
+        lastSyncTime={lastSyncTime}
+        onManualSync={handleManualSync}
+        onExportBackup={handleExportBackup}
+        onImportBackup={handleImportBackup}
+        activeUser={activeUser}
+      />
+
       <AddCustomTaskModal
         isOpen={isAddCustomOpen}
         onClose={() => setIsAddCustomOpen(false)}
@@ -563,6 +892,13 @@ export default function App() {
         onClose={() => setCelebrationState((prev) => ({ ...prev, isOpen: false }))}
         childName={celebrationState.childName}
         pointsEarned={celebrationState.points}
+      />
+
+      <TaskCheckCelebrationModal
+        isOpen={taskCelebration.isOpen}
+        onClose={() => setTaskCelebration((prev) => ({ ...prev, isOpen: false }))}
+        task={taskCelebration.task}
+        childId={taskCelebration.childId}
       />
 
       <RouletteModal

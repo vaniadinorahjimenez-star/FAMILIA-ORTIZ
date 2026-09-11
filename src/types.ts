@@ -111,6 +111,18 @@ export interface FineRecord {
   notes?: string;
 }
 
+export type FamilyUserId = 'mama' | 'papa' | 'nan' | 'regina' | 'romina' | 'nana';
+
+export interface FamilyUserProfile {
+  id: FamilyUserId;
+  name: string;
+  role: 'mama' | 'papa' | 'regina' | 'romina' | 'policia_nan';
+  avatarEmoji: string;
+  badge: string;
+  color: string;
+  themeBg: string;
+}
+
 export interface FamilyChatMessage {
   id: string;
   sender: 'Mamá' | 'Papá' | 'Regina' | 'Romina' | 'Nan';
@@ -120,4 +132,40 @@ export interface FamilyChatMessage {
   isNoticeToMama?: boolean;
   imageDataUrl?: string;
   reactions?: Record<string, number>;
+  replyTo?: {
+    id: string;
+    sender: string;
+    text: string;
+  };
+  reviewedByMama?: boolean;
+  mamaComment?: string;
+  mamaApprovedAt?: string;
+}
+
+export interface ExtraPaymentConcept {
+  id: string;
+  concept: string; // e.g. "Lavar el coche con papá", "Ayudar a guardar la despensa"
+  amount: number; // in MXN pesos
+  childId: ChildId | 'both';
+  date: string; // YYYY-MM-DD
+  timestamp: string;
+  category?: string;
+  registeredBy: string; // e.g. 'Mamá', 'Papá', 'Nan'
+  status: 'pendiente' | 'pagado';
+  notes?: string;
+}
+
+export interface CloudSyncPayload {
+  completions: Record<string, boolean>;
+  familyActivities: FamilyActivity[];
+  familyNotes: FamilyNote[];
+  bonusLogs: BonusLogEntry[];
+  customTasks: RoutineTask[];
+  weeklyPayouts: Record<string, WeekPayoutStatus>;
+  taskEvidences: TaskEvidence[];
+  fines: FineRecord[];
+  familyChat: FamilyChatMessage[];
+  extraPayments?: ExtraPaymentConcept[];
+  lastUpdated: string;
+  updatedBy?: string;
 }

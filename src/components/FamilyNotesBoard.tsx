@@ -243,43 +243,51 @@ export const FamilyNotesBoard: React.FC<FamilyNotesBoardProps> = ({
 
       {/* Compose Note Modal */}
       {showComposeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border-2 border-indigo-200 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+        <div 
+          onClick={() => setShowComposeModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border-2 border-indigo-200 relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+          >
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-indigo-100 text-indigo-700 rounded-xl">
                   <HeartHandshake className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold font-['Fredoka',sans-serif] text-slate-800">
+                  <h3 className="text-base sm:text-lg font-bold font-['Fredoka',sans-serif] text-slate-800 leading-tight">
                     Escribir Pensamiento o Agradecimiento
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500">
                     Para que todos en la familia lo veamos en el muro
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowComposeModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+                aria-label="Cerrar"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleFormSubmit} className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-0.5">
                     ¿Quién escribe? (De)
                   </label>
                   <select
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
                   >
                     <option value="Mamá">Mamá 👩</option>
                     <option value="Papá">Papá 👨</option>
+                    <option value="Nan">Nan 👵</option>
                     <option value="Regina">Regina (10a) 💜</option>
                     <option value="Romina">Romina (8a) 🌸</option>
                     <option value="Toda la Familia">Toda la Familia 👨‍👩‍👧‍👧</option>
@@ -287,32 +295,33 @@ export const FamilyNotesBoard: React.FC<FamilyNotesBoardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-0.5">
                     ¿Para quién es? (Para)
                   </label>
                   <select
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
                   >
                     <option value="Todos">Para Todos 👨‍👩‍👧‍👧</option>
                     <option value="Regina">Regina 💜</option>
                     <option value="Romina">Romina 🌸</option>
                     <option value="Mamá">Mamá 👩</option>
                     <option value="Papá">Papá 👨</option>
+                    <option value="Nan">Nan 👵</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 items-center">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-0.5">
                     Tipo de mensaje
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as FamilyNote['category'])}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
                   >
                     <option value="agradecimiento">❤️ Agradecimiento</option>
                     <option value="animo">🌟 Mensaje de ánimo</option>
@@ -322,16 +331,16 @@ export const FamilyNotesBoard: React.FC<FamilyNotesBoardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-0.5">
                     Color de la nota
                   </label>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-1.5 pt-0.5">
                     {(['amber', 'rose', 'purple', 'emerald', 'sky'] as const).map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setColor(c)}
-                        className={`w-7 h-7 rounded-full transition-transform ${
+                        className={`w-6 h-6 rounded-full transition-transform cursor-pointer ${
                           color === c ? 'ring-2 ring-indigo-600 scale-110' : 'opacity-70 hover:opacity-100'
                         } ${
                           c === 'amber' ? 'bg-amber-300' :
@@ -346,32 +355,32 @@ export const FamilyNotesBoard: React.FC<FamilyNotesBoardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-0.5">
                   Tu mensaje con cariño *
                 </label>
                 <textarea
                   required
-                  rows={4}
+                  rows={2}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Escribe lo que sientes, lo que agradeces o un momento que te hizo sonreír hoy..."
-                  className="w-full p-3.5 rounded-2xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Escribe lo que sientes, agradeces o un momento que te hizo sonreír..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-1 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowComposeModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs sm:text-sm hover:bg-slate-50"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow flex items-center gap-1.5"
+                  className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                   Publicar en el Muro
                 </button>
               </div>

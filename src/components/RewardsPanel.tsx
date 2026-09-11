@@ -9,8 +9,9 @@ import {
   Heart,
   TrendingUp
 } from 'lucide-react';
-import { ChildId, BonusLogEntry, WeekPayoutStatus, FineRecord } from '../types';
+import { ChildId, BonusLogEntry, WeekPayoutStatus, FineRecord, ExtraPaymentConcept } from '../types';
 import { soundFX } from '../utils/audio';
+import { ManualExtraPaymentsSection } from './ManualExtraPaymentsSection';
 
 interface RewardsPanelProps {
   currentDate: Date;
@@ -21,6 +22,11 @@ interface RewardsPanelProps {
   weeklyPayouts: Record<string, WeekPayoutStatus>;
   onTogglePayout: (weekKey: string) => void;
   onNavigateToFines?: () => void;
+  extraPayments?: ExtraPaymentConcept[];
+  onAddExtraPayment?: (payment: Omit<ExtraPaymentConcept, 'id' | 'timestamp'>) => void;
+  onToggleExtraPaymentStatus?: (id: string) => void;
+  onDeleteExtraPayment?: (id: string) => void;
+  activeUser?: string;
 }
 
 export const RewardsPanel: React.FC<RewardsPanelProps> = ({
@@ -32,6 +38,11 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
   weeklyPayouts,
   onTogglePayout,
   onNavigateToFines,
+  extraPayments = [],
+  onAddExtraPayment,
+  onToggleExtraPaymentStatus,
+  onDeleteExtraPayment,
+  activeUser,
 }) => {
   // Compute Monday to Sunday dates of the current week
   const curr = new Date(currentDate);
@@ -130,11 +141,23 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
     });
     const finesDeduction = childFines.reduce((sum, f) => sum + f.amount, 0);
 
+    // Extra manual payment concepts for this child
+    const childExtraPayments = (extraPayments || []).filter(
+      (p) => p.childId === childId || p.childId === 'both'
+    );
+    const extraPesosPending = childExtraPayments
+      .filter((p) => p.status === 'pendiente')
+      .reduce((sum, p) => sum + p.amount, 0);
+    const extraPesosPaid = childExtraPayments
+      .filter((p) => p.status === 'pagado')
+      .reduce((sum, p) => sum + p.amount, 0);
+    const extraPesosTotal = extraPesosPending + extraPesosPaid;
+
     // Goal for full week regular routines: 350 pts = $100 pesos (approx 50 pts/day)
     const WEEKLY_ROUTINE_TARGET = 350;
     const routinePercent = Math.min(100, Math.round((regularPoints / WEEKLY_ROUTINE_TARGET) * 100));
     const baseAllowanceEarned = Math.min(100, Math.round((routinePercent / 100) * 100));
-    const totalWeeklyEarnings = Math.max(0, baseAllowanceEarned + bonusPesos - finesDeduction);
+    const totalWeeklyEarnings = Math.max(0, baseAllowanceEarned + bonusPesos - finesDeduction + extraPesosPending);
 
     return {
       regularPoints,
@@ -142,6 +165,10 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
       bonusPesos,
       childFines,
       finesDeduction,
+      extraPesosPending,
+      extraPesosPaid,
+      extraPesosTotal,
+      childExtraPayments,
       routinePercent,
       baseAllowanceEarned,
       totalWeeklyEarnings,
@@ -254,7 +281,7 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
             </div>
 
             {/* Earnings Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <span className="text-slate-500 block mb-0.5">Por rutinas fijas:</span>
                 <span className="text-base font-extrabold text-slate-800">
@@ -281,7 +308,17 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
                   {rominaStats.finesDeduction > 0 ? `-$${rominaStats.finesDeduction} MXN` : '$0 MXN'}
                 </span>
                 <span className={`text-[10px] block ${rominaStats.finesDeduction > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600'}`}>
-                  {rominaStats.childFines.length > 0 ? `${rominaStats.childFines.length} infracciones (-$5 c/u)` : '¡Cero multas! 🎉'}
+                  {rominaStats.childFines.length > 0 ? `${rominaStats.childFines.length} infracciones` : '¡Cero multas! 🎉'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-200">
+                <span className="text-teal-800 block mb-0.5 font-semibold">Otros pagos extras:</span>
+                <span className="text-base font-extrabold text-teal-700">
+                  +${rominaStats.extraPesosPending} MXN
+                </span>
+                <span className="text-[10px] text-teal-600 block">
+                  {rominaStats.childExtraPayments.length} conceptos ({rominaStats.extraPesosPaid > 0 ? `$${rominaStats.extraPesosPaid} cobrados` : 'por cobrar'})
                 </span>
               </div>
             </div>
@@ -356,7 +393,7 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
             </div>
 
             {/* Earnings Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <span className="text-slate-500 block mb-0.5">Por rutinas fijas:</span>
                 <span className="text-base font-extrabold text-slate-800">
@@ -383,7 +420,17 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
                   {reginaStats.finesDeduction > 0 ? `-$${reginaStats.finesDeduction} MXN` : '$0 MXN'}
                 </span>
                 <span className={`text-[10px] block ${reginaStats.finesDeduction > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600'}`}>
-                  {reginaStats.childFines.length > 0 ? `${reginaStats.childFines.length} infracciones (-$5 c/u)` : '¡Cero multas! 🎉'}
+                  {reginaStats.childFines.length > 0 ? `${reginaStats.childFines.length} infracciones` : '¡Cero multas! 🎉'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-200">
+                <span className="text-teal-800 block mb-0.5 font-semibold">Otros pagos extras:</span>
+                <span className="text-base font-extrabold text-teal-700">
+                  +${reginaStats.extraPesosPending} MXN
+                </span>
+                <span className="text-[10px] text-teal-600 block">
+                  {reginaStats.childExtraPayments.length} conceptos ({reginaStats.extraPesosPaid > 0 ? `$${reginaStats.extraPesosPaid} cobrados` : 'por cobrar'})
                 </span>
               </div>
             </div>
@@ -458,6 +505,16 @@ export const RewardsPanel: React.FC<RewardsPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Manual Extra Payment Concepts Section ("Llevar su cuenta") */}
+      <ManualExtraPaymentsSection
+        extraPayments={extraPayments}
+        onAddExtraPayment={onAddExtraPayment || (() => {})}
+        onToggleStatus={onToggleExtraPaymentStatus || (() => {})}
+        onDeletePayment={onDeleteExtraPayment || (() => {})}
+        selectedChild={selectedChild}
+        activeUser={activeUser}
+      />
     </div>
   );
 };

@@ -161,12 +161,27 @@ export function generateDailySchedule(date: Date): RoutineTask[] {
     });
   }
 
-  // Regina Afternoon Walk with Luna (Daily 3:00 - 4:00 PM)
+  // Hacer mi tarea escolar (Diario 3:00 - 4:00 PM)
+  tasks.push({
+    id: 'homework-daily',
+    title: 'Hacer mi tarea escolar 📚✏️',
+    description: isWeekend
+      ? 'Adelantar tareas pendientes, repasar lecturas de la escuela y alistar mochilas.'
+      : 'Hacer todas las tareas de la escuela concentradas, repasar apuntes y dejar cuadernos listos.',
+    timeSlot: '15:00 - 16:00',
+    timeCategory: 'afternoon',
+    assignedTo: 'both',
+    category: 'custom',
+    points: 20,
+    iconName: 'BookOpen',
+  });
+
+  // Regina Afternoon Walk with Luna (Daily 4:00 - 5:00 PM, tras terminar la tarea)
   tasks.push({
     id: 'regina-luna-afternoon',
     title: 'Paseo de la tarde con Luna 🐕',
-    description: 'Regina saca a pasear a Luna de 3 a 4 pm, con su correa y bolsitas.',
-    timeSlot: '15:00 - 16:00',
+    description: 'Regina saca a pasear a Luna con su correa y bolsitas para estirar las patitas tras la tarea.',
+    timeSlot: '16:00 - 17:00',
     timeCategory: 'afternoon',
     assignedTo: 'regina',
     category: 'luna',
@@ -174,13 +189,13 @@ export function generateDailySchedule(date: Date): RoutineTask[] {
     iconName: 'Dog',
   });
 
-  // Tuesday & Thursday afternoon: Romina Piano & Regina Duolingo 3:00 - 4:00 PM
+  // Tuesday & Thursday afternoon: Romina Piano & Regina Duolingo 4:00 - 5:00 PM
   if (isTueThu) {
     tasks.push({
       id: 'romina-piano-tuethu',
       title: 'Lección de Piano de Romina 🎹',
-      description: 'Práctica concentrada de piano de 3:00 a 4:00 pm.',
-      timeSlot: '15:00 - 16:00',
+      description: 'Práctica concentrada de piano de 4:00 a 5:00 pm.',
+      timeSlot: '16:00 - 17:00',
       timeCategory: 'afternoon',
       assignedTo: 'romina',
       category: 'music_lang',
@@ -192,7 +207,7 @@ export function generateDailySchedule(date: Date): RoutineTask[] {
       id: 'regina-duolingo-tuethu',
       title: 'Lección de Duolingo de Regina 🦉',
       description: 'Completar objetivos diarios y ejercicios de idiomas.',
-      timeSlot: '16:00 - 16:45',
+      timeSlot: '17:00 - 17:45',
       timeCategory: 'afternoon',
       assignedTo: 'regina',
       category: 'music_lang',
@@ -271,11 +286,11 @@ export function generateDailySchedule(date: Date): RoutineTask[] {
     });
   }
 
-  // Daily Bedtime Routine: Pijama y cepillado de dientes
+  // Daily Bedtime Routine: Pijama, lavarse la cara y cepillado de dientes
   tasks.push({
     id: 'teeth-bedtime',
-    title: 'Pijama y cepillado de dientes 🌙',
-    description: 'Ponerse pijama limpia, lavarse los dientes a fondo y dejar todo listo para dormir.',
+    title: 'Pijama, cepillarse los dientes y lavarse la cara 🌙🧼',
+    description: 'Ponerse su pijama limpia, lavarse muy bien la carita con agua fresca y jabón, cepillarse los dientes a fondo y dejar todo listo para descansar.',
     timeSlot: '21:00 - 21:30',
     timeCategory: 'evening',
     assignedTo: 'both',

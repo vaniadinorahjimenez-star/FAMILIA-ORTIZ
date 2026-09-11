@@ -6,7 +6,6 @@ import {
   Sparkles, 
   Check, 
   Image as ImageIcon,
-  Calendar,
   AlertCircle
 } from 'lucide-react';
 import { ChildId, TaskEvidence } from '../types';
@@ -132,200 +131,209 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
   return (
     <div 
       id="upload-evidence-modal-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+      onClick={onClose}
     >
       <div 
         id="upload-evidence-modal-card"
-        className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border-2 border-purple-200 relative max-h-[92vh] overflow-y-auto animate-in zoom-in-95"
+        className="w-full max-w-lg md:max-w-2xl bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border-2 border-purple-200 relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-purple-100 text-purple-700 rounded-2xl">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-purple-100 text-purple-700 rounded-xl">
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-xl font-bold font-['Fredoka',sans-serif] text-slate-900">
+              <h3 className="text-base sm:text-lg font-bold font-['Fredoka',sans-serif] text-slate-900 leading-tight">
                 Subir Foto de Actividad Cumplida 📸
               </h3>
-              <p className="text-xs text-slate-500">
-                Evidencia de que cumpliste tu rutina o reto del día
+              <p className="text-[11px] text-slate-500">
+                Evidencia de rutina o reto completado para la familia
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+            aria-label="Cerrar"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+          <div className="mb-2 p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-1.5">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Who completed it */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              ¿Quién cumplió la actividad? *
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                id="select-evidence-romina-btn"
-                onClick={() => {
-                  setChildId('romina');
-                  soundFX.playPop();
-                }}
-                className={`p-3 rounded-2xl border-2 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-                  childId === 'romina'
-                    ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                }`}
-              >
-                <span>🌸 Romina (8 años)</span>
-              </button>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Responsive 2-column on iPad/tablets */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+            {/* Left Column: Details */}
+            <div className="space-y-2">
+              {/* Who completed it */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  ¿Quién cumplió la actividad? *
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    id="select-evidence-romina-btn"
+                    onClick={() => {
+                      setChildId('romina');
+                      soundFX.playPop();
+                    }}
+                    className={`py-1.5 px-2 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      childId === 'romina'
+                        ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-2xs'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <span>🌸 Romina</span>
+                  </button>
 
-              <button
-                type="button"
-                id="select-evidence-regina-btn"
-                onClick={() => {
-                  setChildId('regina');
-                  soundFX.playPop();
-                }}
-                className={`p-3 rounded-2xl border-2 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-                  childId === 'regina'
-                    ? 'border-purple-600 bg-purple-50 text-purple-900 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                }`}
-              >
-                <span>💜 Regina (10 años)</span>
-              </button>
+                  <button
+                    type="button"
+                    id="select-evidence-regina-btn"
+                    onClick={() => {
+                      setChildId('regina');
+                      soundFX.playPop();
+                    }}
+                    className={`py-1.5 px-2 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      childId === 'regina'
+                        ? 'border-purple-600 bg-purple-50 text-purple-900 shadow-2xs'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <span>💜 Regina</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Activity title */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Actividad Realizada *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  placeholder="Ej: Paseo con Luna, Tarea escolar..."
+                  className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                />
+              </div>
+
+              {/* Optional Caption */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Comentario (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Ej: ¡Luna corrió feliz en el parque!"
+                  className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Photo Uploader / Preview */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                Foto de la actividad *
+              </label>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {!imageDataUrl ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-3 sm:p-4 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[120px] ${
+                    isDragging
+                      ? 'border-purple-500 bg-purple-50 scale-[1.01]'
+                      : 'border-slate-300 hover:border-purple-400 bg-slate-50/70 hover:bg-purple-50/40'
+                  }`}
+                >
+                  <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-1">
+                    <UploadCloud className="w-4 h-4" />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-800">
+                    Tomar o subir foto
+                  </h4>
+                  <p className="text-[10px] text-slate-500">
+                    Haz clic aquí para abrir cámara o galería
+                  </p>
+                  <span className="mt-1.5 px-2.5 py-1 bg-purple-600 text-white text-[10px] font-bold rounded-lg shadow-2xs">
+                    Abrir Cámara / Galería 📷
+                  </span>
+                </div>
+              ) : (
+                <div className="relative rounded-2xl overflow-hidden border-2 border-purple-300 group max-h-[130px] flex items-center justify-center bg-slate-100">
+                  <img
+                    src={imageDataUrl}
+                    alt="Vista previa"
+                    className="w-full h-32 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1 bg-white text-slate-800 font-bold text-[10px] rounded-lg shadow"
+                    >
+                      Cambiar 🔄
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageDataUrl('')}
+                      className="px-2.5 py-1 bg-rose-600 text-white font-bold text-[10px] rounded-lg shadow"
+                    >
+                      Quitar ✕
+                    </button>
+                  </div>
+                  <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded-md backdrop-blur-xs flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>Foto lista</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Activity title */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Actividad o Rutina Realizada *
-            </label>
-            <input
-              type="text"
-              required
-              value={taskTitle}
-              onChange={(e) => setTaskTitle(e.target.value)}
-              placeholder="Ej: Paseo con Luna en el parque, Lección de piano, Gimnasia..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none"
-            />
-          </div>
-
-          {/* Drag and drop upload zone */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Foto de la actividad *
-            </label>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-
-            {!imageDataUrl ? (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`p-6 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all ${
-                  isDragging
-                    ? 'border-purple-500 bg-purple-50 scale-[1.01]'
-                    : 'border-slate-300 hover:border-purple-400 bg-slate-50/70 hover:bg-purple-50/40'
-                }`}
-              >
-                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-600 mx-auto flex items-center justify-center mb-2">
-                  <UploadCloud className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-800">
-                  Arrastra tu foto aquí o haz clic para seleccionarla
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Puedes tomar la foto con la cámara de tu celular o tablet, o elegir de tu galería
-                </p>
-                <span className="inline-block mt-3 px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-purple-700">
-                  Tomar o Elegir Foto 📷
-                </span>
-              </div>
-            ) : (
-              <div className="relative rounded-2xl overflow-hidden border-2 border-purple-300 group">
-                <img
-                  src={imageDataUrl}
-                  alt="Vista previa de evidencia"
-                  className="w-full h-56 object-cover bg-slate-100"
-                />
-                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3.5 py-1.5 bg-white text-slate-800 font-bold text-xs rounded-xl shadow hover:bg-slate-100"
-                  >
-                    Cambiar Foto 🔄
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setImageDataUrl('')}
-                    className="px-3.5 py-1.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow hover:bg-rose-700"
-                  >
-                    Quitar ✕
-                  </button>
-                </div>
-                <div className="absolute bottom-2 left-2 px-2.5 py-1 bg-black/60 text-white text-[11px] font-bold rounded-lg backdrop-blur-sm flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Foto lista para guardar</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Optional Caption */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Comentario o mensaje (opcional)
-            </label>
-            <textarea
-              rows={2}
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Ej: Luna disfrutó mucho correr en el pasto, ¡y practicamos saltos!"
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none"
-            />
-          </div>
-
-          {/* Buttons */}
+          {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+              className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!imageDataUrl || !taskTitle.trim()}
-              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm shadow flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Guardar Evidencia Fotográfica</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Guardar Evidencia</span>
             </button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 {
   "name": "Calendario de Rutinas - Regina & Romina",
-  "description": "Calendario interactivo de rutinas para Regina y Romina con fotos de evidencia, sistema de multas de la policía Nan (-$5 pesos), recompensas de $100 pesos, bonos sin pantalla y chat de avisos a mamá.",
+  "description": "Calendario familiar sincronizado para 5 miembros (Mamá, Papá, Nan, Regina y Romina) con animaciones de Luna (perrita French Poodle blanca con negrito), frases motivadoras al completar tareas, evidencias con foto, multas de Nan y chat libre.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

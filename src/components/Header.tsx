@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CalendarDays, 
   CalendarRange, 
@@ -13,10 +13,15 @@ import {
   RotateCcw,
   Camera,
   ShieldAlert,
-  MessageCircle
+  MessageCircle,
+  Cloud,
+  RefreshCw,
+  UserCheck,
+  ChevronDown
 } from 'lucide-react';
-import { ChildId } from '../types';
+import { ChildId, FamilyUserId } from '../types';
 import { soundFX } from '../utils/audio';
+import { FAMILY_USERS } from '../utils/familyUsers';
 
 export type ActiveTab = 
   | 'daily' 
@@ -39,6 +44,11 @@ interface HeaderProps {
   soundEnabled: boolean;
   onToggleSound: () => void;
   activeFinesCount?: number;
+  activeUser?: FamilyUserId;
+  onUserChange?: (user: FamilyUserId) => void;
+  isSyncing?: boolean;
+  onOpenSyncModal?: () => void;
+  lastSyncTime?: string | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -52,7 +62,15 @@ export const Header: React.FC<HeaderProps> = ({
   soundEnabled,
   onToggleSound,
   activeFinesCount = 0,
+  activeUser = 'mama',
+  onUserChange,
+  isSyncing = false,
+  onOpenSyncModal,
+  lastSyncTime,
 }) => {
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+  const currentUserObj = FAMILY_USERS.find((u) => u.id === activeUser) || FAMILY_USERS[0];
   const isToday = () => {
     const today = new Date();
     return (
@@ -184,6 +202,74 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-600" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
             </button>
+
+            {/* Cloud Sync Button */}
+            {onOpenSyncModal && (
+              <button
+                onClick={onOpenSyncModal}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all shadow-2xs"
+                title="Sincronización multi-dispositivo familiar (Netlify)"
+              >
+                <Cloud className={`w-3.5 h-3.5 text-emerald-600 ${isSyncing ? 'animate-bounce' : ''}`} />
+                <span className="hidden md:inline">
+                  {isSyncing ? 'Sincronizando...' : 'Nube'}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              </button>
+            )}
+
+            {/* Active Family User Profile Switcher */}
+            {onUserChange && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${currentUserObj.themeBg}`}
+                  title="Cambiar quién está usando este dispositivo"
+                >
+                  <span className="text-sm">{currentUserObj.avatarEmoji}</span>
+                  <span className="hidden sm:inline font-bold">{currentUserObj.name}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+
+                {showUserDropdown && (
+                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 tracking-wider">
+                      ¿Quién usa este celular?
+                    </div>
+                    <div className="space-y-1">
+                      {FAMILY_USERS.map((user) => (
+                        <button
+                          key={user.id}
+                          onClick={() => {
+                            onUserChange(user.id);
+                            setShowUserDropdown(false);
+                            soundFX.playPop();
+                          }}
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-colors ${
+                            activeUser === user.id
+                              ? 'bg-slate-900 text-white'
+                              : 'hover:bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          <span className="text-base">{user.avatarEmoji}</span>
+                          <div className="flex-1 truncate">
+                            <div>{user.name}</div>
+                            <div className={`text-[10px] font-normal ${activeUser === user.id ? 'text-slate-300' : 'text-slate-400'}`}>
+                              {user.badge}
+                            </div>
+                          </div>
+                          {activeUser === user.id && (
+                            <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-md">
+                              Activo
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
