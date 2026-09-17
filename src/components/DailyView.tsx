@@ -48,6 +48,7 @@ interface DailyViewProps {
   onShareToChat?: (text: string) => void;
   isOnline?: boolean;
   pendingChangesCount?: number;
+  deviceView?: 'mobile' | 'tablet';
 }
 
 export const DailyView: React.FC<DailyViewProps> = ({
@@ -70,6 +71,7 @@ export const DailyView: React.FC<DailyViewProps> = ({
   onShareToChat,
   isOnline = true,
   pendingChangesCount = 0,
+  deviceView = 'tablet',
 }) => {
   const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const isGymDay = dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5;
@@ -136,6 +138,169 @@ export const DailyView: React.FC<DailyViewProps> = ({
     const rominaChecked = getTaskStatus(task, 'romina');
     const reginaChecked = getTaskStatus(task, 'regina');
 
+    // MOBILE TASK CARD DESIGN
+    if (deviceView === 'mobile') {
+      const isDone = 
+        (selectedChild === 'romina' && rominaChecked) ||
+        (selectedChild === 'regina' && reginaChecked) ||
+        (selectedChild === 'both' && (
+          (isAssignedBoth && rominaChecked && reginaChecked) ||
+          (!isAssignedBoth && ((task.assignedTo === 'romina' && rominaChecked) || (task.assignedTo === 'regina' && reginaChecked)))
+        ));
+
+      return (
+        <div
+          key={task.id}
+          className={`p-3 rounded-2xl border transition-all duration-200 ${
+            isDone
+              ? 'bg-slate-50/90 border-slate-200 opacity-75'
+              : 'bg-white border-amber-200/80 shadow-xs'
+          }`}
+        >
+          {/* Header Row: Badges & Camera */}
+          <div className="flex items-center justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <Clock className="w-3 h-3 text-slate-400" />
+                {task.timeSlot}
+              </span>
+
+              {task.assignedTo === 'romina' && (
+                <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-md">
+                  🌸 Romina
+                </span>
+              )}
+              {task.assignedTo === 'regina' && (
+                <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-md">
+                  💜 Regina
+                </span>
+              )}
+              {task.assignedTo === 'both' && (
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-md">
+                  👨‍👩‍👧‍👧 Ambas
+                </span>
+              )}
+
+              <span className="text-[11px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-0.5">
+                <Sparkles className="w-3 h-3" />
+                +{task.points}p
+              </span>
+            </div>
+
+            {/* Quick Evidence Photo Button */}
+            {onOpenUploadEvidence && (
+              <button
+                id={`upload-evidence-${task.id}`}
+                onClick={() => onOpenUploadEvidence(
+                  task,
+                  task.assignedTo === 'both' 
+                    ? (selectedChild === 'regina' ? 'regina' : 'romina') 
+                    : task.assignedTo
+                )}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 bg-slate-100 hover:bg-purple-50 border border-slate-200 flex items-center gap-1 text-[11px] font-semibold shrink-0"
+                title="Subir foto de evidencia"
+              >
+                <Camera className="w-3.5 h-3.5 text-purple-600" />
+                <span className="text-[10px]">Foto</span>
+              </button>
+            )}
+          </div>
+
+          {/* Body Row: Icon + Title + Description */}
+          <div className="flex items-start gap-2.5 mb-2.5">
+            <div className="p-2 bg-amber-50 rounded-xl border border-amber-100 shrink-0 mt-0.5">
+              {getIcon(task.iconName)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-bold text-slate-800 leading-tight">
+                {task.title}
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                {task.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Footer Action Buttons: Thumb-friendly 44px touch targets */}
+          <div className="pt-2 border-t border-slate-100">
+            {isAssignedBoth && selectedChild === 'both' ? (
+              <div className="grid grid-cols-2 gap-2">
+                {/* Romina Button */}
+                <button
+                  id={`check-task-${task.id}-romina`}
+                  onClick={() => onToggleTask(task.id, 'romina')}
+                  className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    rominaChecked
+                      ? 'bg-rose-500 text-white shadow-xs font-black'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-md flex items-center justify-center border ${rominaChecked ? 'bg-white text-rose-600 border-white' : 'border-rose-400'}`}>
+                    {rominaChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
+                  <span>🌸 Romina {rominaChecked ? '✓' : ''}</span>
+                </button>
+
+                {/* Regina Button */}
+                <button
+                  id={`check-task-${task.id}-regina`}
+                  onClick={() => onToggleTask(task.id, 'regina')}
+                  className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    reginaChecked
+                      ? 'bg-purple-600 text-white shadow-xs font-black'
+                      : 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-md flex items-center justify-center border ${reginaChecked ? 'bg-white text-purple-600 border-white' : 'border-purple-400'}`}>
+                    {reginaChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
+                  <span>💜 Regina {reginaChecked ? '✓' : ''}</span>
+                </button>
+              </div>
+            ) : (
+              <div>
+                {/* Single Child Button */}
+                {(task.assignedTo === 'romina' || (task.assignedTo === 'both' && selectedChild === 'romina')) && (
+                  <button
+                    id={`check-task-${task.id}-romina`}
+                    onClick={() => onToggleTask(task.id, 'romina')}
+                    className={`w-full min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      rominaChecked
+                        ? 'bg-rose-500 text-white shadow-xs font-black'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-md flex items-center justify-center border ${rominaChecked ? 'bg-white text-rose-600 border-white' : 'border-rose-400'}`}>
+                      {rominaChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
+                    <span>{rominaChecked ? '¡Completada por Romina!' : 'Marcar como completada (Romina)'}</span>
+                  </button>
+                )}
+
+                {(task.assignedTo === 'regina' || (task.assignedTo === 'both' && selectedChild === 'regina')) && (
+                  <button
+                    id={`check-task-${task.id}-regina`}
+                    onClick={() => onToggleTask(task.id, 'regina')}
+                    className={`w-full min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      reginaChecked
+                        ? 'bg-purple-600 text-white shadow-xs font-black'
+                        : 'bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-md flex items-center justify-center border ${reginaChecked ? 'bg-white text-purple-600 border-white' : 'border-purple-400'}`}>
+                      {reginaChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
+                    <span>{reginaChecked ? '¡Completada por Regina!' : 'Marcar como completada (Regina)'}</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // TABLET & DESKTOP TASK CARD DESIGN
     return (
       <div
         key={task.id}

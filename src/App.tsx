@@ -93,7 +93,12 @@ import { FamilyDeviceConnectModal } from './components/FamilyDeviceConnectModal'
 import { DeviceProfileModal } from './components/DeviceProfileModal';
 import { MamaDailyLoveModal } from './components/MamaDailyLoveModal';
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
+import { 
+  isUserSessionAuthenticated, 
+  clearUserSessionAuth 
+} from './utils/familyAuth';
 import { 
   hasSeenMamaDailyReminderToday, 
   sendMamaBrowserNotification 
@@ -105,11 +110,51 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  // Device View State: 'mobile' (para celulares) vs 'tablet' (para iPad/computadora)
+  const [deviceView, setDeviceView] = useState<'mobile' | 'tablet'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('family_device_view');
+      if (saved === 'mobile' || saved === 'tablet') return saved;
+      return window.innerWidth < 768 ? 'mobile' : 'tablet';
+    }
+    return 'tablet';
+  });
+
+  const handleToggleDeviceView = (mode: 'mobile' | 'tablet') => {
+    setDeviceView(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('family_device_view', mode);
+    }
+    soundFX.playPop();
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      const userSaved = localStorage.getItem('family_device_view');
+      if (!userSaved) {
+        setDeviceView(window.innerWidth < 768 ? 'mobile' : 'tablet');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Active Family User on this device (Default: Mamá)
   const [activeUser, setActiveUser] = useState<FamilyUserId>(() => getStoredActiveUser());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const initial = getStoredActiveUser();
+    return isUserSessionAuthenticated(initial);
+  });
+  const [targetAuthUser, setTargetAuthUser] = useState<FamilyUserId | null>(() => {
+    const initial = getStoredActiveUser();
+    return !isUserSessionAuthenticated(initial) ? initial : null;
+  });
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => !hasUserExplicitlyChosenProfile());
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(() => {
+    const initial = getStoredActiveUser();
+    return !isUserSessionAuthenticated(initial);
+  });
 
   // Cloud Sync state
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -179,10 +224,27 @@ export default function App() {
     }
   }, []);
 
-  // Handle active user change
-  const handleUserChange = (newUser: FamilyUserId) => {
-    setActiveUser(newUser);
-    saveStoredActiveUser(newUser);
+  // Handle active user change requiring password validation
+  const handleRequestUserChange = (newUser: FamilyUserId) => {
+    if (newUser === activeUser && isAuthenticated) {
+      return;
+    }
+    if (isUserSessionAuthenticated(newUser)) {
+      setActiveUser(newUser);
+      saveStoredActiveUser(newUser);
+      setIsAuthenticated(true);
+      return;
+    }
+    setTargetAuthUser(newUser);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleLockApp = () => {
+    clearUserSessionAuth();
+    setIsAuthenticated(false);
+    setTargetAuthUser(activeUser);
+    setIsProfileModalOpen(true);
+    soundFX.playPop();
   };
 
   // Helper to construct current bundle
@@ -1158,7 +1220,8 @@ export default function App() {
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
         activeFinesCount={activeFinesCount}
         activeUser={activeUser}
-        onUserChange={handleUserChange}
+        onUserChange={handleRequestUserChange}
+        onLockApp={handleLockApp}
         isSyncing={isSyncing}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
         lastSyncTime={lastSyncTime}
@@ -1169,6 +1232,8 @@ export default function App() {
           setIsMamaLoveModalOpen(true);
           soundFX.playCelebration();
         }}
+        deviceView={deviceView}
+        onToggleDeviceView={handleToggleDeviceView}
       />
 
       {/* Network & Offline Resilience Indicator Bar */}
@@ -1182,8 +1247,8 @@ export default function App() {
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+      {/* Main Content Area: Optimized width & padding for mobile vs tablet */}
+      <main className={deviceView === 'mobile' ? 'max-w-lg mx-auto px-3 pt-3 pb-24' : 'max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-12'}>
         {activeTab === 'daily' && (
           <DailyView
             currentDate={currentDate}
@@ -1228,6 +1293,7 @@ export default function App() {
             }}
             isOnline={networkStatus.isOnline}
             pendingChangesCount={networkStatus.pendingChangesCount}
+            deviceView={deviceView}
           />
         )}
 
@@ -1353,7 +1419,7 @@ export default function App() {
             onAddReaction={handleAddReaction}
             onMamaApproveNotice={handleMamaApproveNotice}
             activeUser={activeUser}
-            onSwitchUser={handleUserChange}
+            onSwitchUser={handleRequestUserChange}
             onlineUsers={onlineUsers}
             onOpenConnectModal={() => setIsConnectModalOpen(true)}
           />
@@ -1444,11 +1510,21 @@ export default function App() {
 
       <DeviceProfileModal
         isOpen={isProfileModalOpen}
-        onSelectUser={(userId) => {
-          handleUserChange(userId);
+        targetUser={targetAuthUser}
+        allowClose={isAuthenticated}
+        onSuccess={(userId) => {
+          setActiveUser(userId);
+          saveStoredActiveUser(userId);
+          setIsAuthenticated(true);
+          setTargetAuthUser(null);
           setIsProfileModalOpen(false);
         }}
-        onClose={() => setIsProfileModalOpen(false)}
+        onClose={() => {
+          if (isAuthenticated) {
+            setTargetAuthUser(null);
+            setIsProfileModalOpen(false);
+          }
+        }}
       />
 
       {/* Mama Daily Love & Task Reminder Modal */}
@@ -1460,6 +1536,23 @@ export default function App() {
           setActiveTab('daily');
         }}
       />
+
+      {/* Persistent Mobile Bottom Navigation (Solo en Celular o pantallas móviles) */}
+      {deviceView === 'mobile' && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          activeFinesCount={activeFinesCount}
+          onOpenMamaLoveReminder={() => {
+            setIsManualMamaLoveOpen(true);
+            setIsMamaLoveModalOpen(true);
+            soundFX.playCelebration();
+          }}
+          onOpenSyncModal={() => setIsSyncModalOpen(true)}
+          onToggleDeviceView={handleToggleDeviceView}
+          deviceView={deviceView}
+        />
+      )}
     </div>
   );
 }

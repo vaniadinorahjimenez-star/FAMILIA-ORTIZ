@@ -20,7 +20,10 @@ import {
   ChevronDown,
   WifiOff,
   Wifi,
-  Heart
+  Heart,
+  Smartphone,
+  Tablet,
+  Lock
 } from 'lucide-react';
 import { ChildId, FamilyUserId } from '../types';
 import { soundFX } from '../utils/audio';
@@ -55,6 +58,9 @@ interface HeaderProps {
   isOnline?: boolean;
   pendingChangesCount?: number;
   onOpenMamaLoveReminder?: () => void;
+  deviceView?: 'mobile' | 'tablet';
+  onToggleDeviceView?: (mode: 'mobile' | 'tablet') => void;
+  onLockApp?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -76,6 +82,9 @@ export const Header: React.FC<HeaderProps> = ({
   isOnline = true,
   pendingChangesCount = 0,
   onOpenMamaLoveReminder,
+  deviceView = 'tablet',
+  onToggleDeviceView,
+  onLockApp,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -111,6 +120,243 @@ export const Header: React.FC<HeaderProps> = ({
 
   const capitalizedDate = formattedDateTitle.charAt(0).toUpperCase() + formattedDateTitle.slice(1);
 
+  // 1. DEDICATED MOBILE VIEW (Diseñada específicamente para celulares)
+  if (deviceView === 'mobile') {
+    return (
+      <header className="bg-white/95 backdrop-blur-md border-b border-amber-200/80 shadow-xs sticky top-0 z-40">
+        <div className="px-3 py-2 space-y-2 max-w-lg mx-auto">
+          {/* Row 1: Brand + Quick Actions */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-rose-400 flex items-center justify-center text-white shadow-xs shrink-0">
+                <Dog className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 leading-none">
+                  <span className="font-bold text-sm text-slate-800 font-['Fredoka',sans-serif] truncate">
+                    Regina &amp; Romina
+                  </span>
+                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded-full border border-amber-300 shrink-0">
+                    Luna 🐶
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium truncate">
+                  Rutinas, Gimnasia &amp; Familia
+                </p>
+              </div>
+            </div>
+
+            {/* Right Tools: Mode Switcher, Cloud, Sound, User Profile */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Toggle to Tablet view */}
+              {onToggleDeviceView && (
+                <button
+                  id="mobile-view-toggle-btn"
+                  onClick={() => {
+                    onToggleDeviceView('tablet');
+                    soundFX.playPop();
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-100/90 hover:bg-amber-200 text-amber-900 border border-amber-300 text-[11px] font-bold shadow-2xs cursor-pointer"
+                  title="Cambiar a Vista Tablet"
+                >
+                  <Smartphone className="w-3 h-3 text-amber-700" />
+                  <span className="hidden min-[360px]:inline">Celular</span>
+                </button>
+              )}
+
+              {/* Cloud Sync indicator */}
+              {onOpenSyncModal && (
+                <button
+                  onClick={onOpenSyncModal}
+                  className={`p-1.5 rounded-xl border transition-colors ${
+                    !isOnline 
+                      ? 'bg-amber-50 border-amber-300 text-amber-700' 
+                      : isSyncing 
+                      ? 'bg-sky-50 border-sky-300 text-sky-700' 
+                      : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                  }`}
+                  title={!isOnline ? 'Sin red (Local)' : isSyncing ? 'Sincronizando' : 'Nube conectada'}
+                >
+                  {!isOnline ? (
+                    <WifiOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  )}
+                </button>
+              )}
+
+              {/* Sound Toggle */}
+              <button
+                onClick={onToggleSound}
+                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200"
+                title={soundEnabled ? 'Silenciar sonidos' : 'Activar sonidos'}
+              >
+                {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-amber-600" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+              </button>
+
+              {/* User Avatar dropdown */}
+              {onUserChange && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-[11px] font-bold shadow-2xs ${currentUserObj.themeBg}`}
+                    title="Cambiar usuario"
+                  >
+                    <span className="text-xs leading-none">{currentUserObj.avatarEmoji}</span>
+                    <ChevronDown className="w-3 h-3 opacity-60" />
+                  </button>
+
+                  {showUserDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 tracking-wider">
+                        ¿Quién usa este cel?
+                      </div>
+                      <div className="space-y-1">
+                        {FAMILY_USERS.map((user) => (
+                          <button
+                            key={user.id}
+                            onClick={() => {
+                              onUserChange(user.id);
+                              setShowUserDropdown(false);
+                              soundFX.playPop();
+                            }}
+                            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-colors ${
+                              activeUser === user.id
+                                ? 'bg-slate-900 text-white'
+                                : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <span>{user.avatarEmoji}</span>
+                            <span className="flex-1 truncate">{user.name}</span>
+                            {activeUser === user.id && (
+                              <span className="text-[9px] bg-emerald-500 text-white px-1 py-0.2 rounded font-bold">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {onLockApp && (
+                        <div className="pt-1.5 mt-1.5 border-t border-slate-100">
+                          <button
+                            id="mobile-lock-app-btn"
+                            onClick={() => {
+                              setShowUserDropdown(false);
+                              onLockApp();
+                            }}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+                          >
+                            <Lock className="w-3 h-3 text-rose-500" />
+                            <span>Bloquear pantalla</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Child Selector Segmented Pills (Thumb-friendly full-width) */}
+          <div className="grid grid-cols-3 gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/90 shadow-inner">
+            <button
+              id="mobile-select-both-btn"
+              onClick={() => {
+                onChildChange('both');
+                soundFX.playPop();
+              }}
+              className={`py-1.5 rounded-lg text-xs font-bold text-center transition-all ${
+                selectedChild === 'both'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              👨‍👩‍👧‍👧 Ambas
+            </button>
+
+            <button
+              id="mobile-select-romina-btn"
+              onClick={() => {
+                onChildChange('romina');
+                soundFX.playPop();
+              }}
+              className={`py-1.5 rounded-lg text-xs font-bold text-center transition-all flex items-center justify-center gap-1 ${
+                selectedChild === 'romina'
+                  ? 'bg-rose-500 text-white shadow-xs font-black'
+                  : 'text-rose-700 hover:bg-rose-50'
+              }`}
+            >
+              <span>🌸 Romina</span>
+            </button>
+
+            <button
+              id="mobile-select-regina-btn"
+              onClick={() => {
+                onChildChange('regina');
+                soundFX.playPop();
+              }}
+              className={`py-1.5 rounded-lg text-xs font-bold text-center transition-all flex items-center justify-center gap-1 ${
+                selectedChild === 'regina'
+                  ? 'bg-purple-600 text-white shadow-xs font-black'
+                  : 'text-purple-700 hover:bg-purple-50'
+              }`}
+            >
+              <span>💜 Regina</span>
+            </button>
+          </div>
+
+          {/* Row 3: Compact Date Switcher on Daily Tab */}
+          {activeTab === 'daily' && (
+            <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-1 flex-1">
+                <button
+                  onClick={handlePrevDay}
+                  className="p-1 rounded-lg text-slate-600 hover:bg-amber-100 border border-slate-200"
+                  title="Día anterior"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="flex-1 text-center py-1 px-1.5 bg-amber-50/80 rounded-lg border border-amber-200 font-bold text-slate-800 text-xs truncate flex items-center justify-center gap-1">
+                  <span className="truncate">{capitalizedDate}</span>
+                  {isToday() && (
+                    <span className="text-[9px] bg-emerald-500 text-white px-1 py-0.2 rounded font-black shrink-0">
+                      HOY
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleNextDay}
+                  className="p-1 rounded-lg text-slate-600 hover:bg-amber-100 border border-slate-200"
+                  title="Día siguiente"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+
+                {!isToday() && (
+                  <button
+                    onClick={onResetToday}
+                    className="px-1.5 py-1 text-[10px] font-bold bg-amber-100 text-amber-900 rounded-lg border border-amber-300 shrink-0"
+                  >
+                    Hoy
+                  </button>
+                )}
+              </div>
+
+              <div className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 shrink-0">
+                🎯 Meta: $100
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+    );
+  }
+
+  // 2. DEDICATED TABLET VIEW (Diseñada para iPad y pantallas medianas/grandes)
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-amber-100 shadow-sm sticky top-0 z-40">
       {/* Top Banner with Brand, Child Filter, Sound */}
@@ -201,6 +447,23 @@ export const Header: React.FC<HeaderProps> = ({
                 Regina <span className="text-[11px] opacity-80">(10a)</span>
               </button>
             </div>
+
+            {/* Device View Mode Switcher (Tablet -> Mobile) */}
+            {onToggleDeviceView && (
+              <button
+                id="tablet-view-toggle-btn"
+                onClick={() => {
+                  onToggleDeviceView('mobile');
+                  soundFX.playPop();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-100/70 hover:bg-amber-200 text-amber-900 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                title="Cambiar a Vista Celular"
+              >
+                <Tablet className="w-3.5 h-3.5 text-amber-700" />
+                <span className="hidden md:inline">Vista Tablet</span>
+                <span className="md:hidden">Tablet</span>
+              </button>
+            )}
 
             {/* Sound Mute button desktop */}
             <button
@@ -321,6 +584,22 @@ export const Header: React.FC<HeaderProps> = ({
                         </button>
                       ))}
                     </div>
+
+                    {onLockApp && (
+                      <div className="pt-2 mt-2 border-t border-slate-100">
+                        <button
+                          id="tablet-lock-app-btn"
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            onLockApp();
+                          }}
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
+                          <Lock className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Bloquear pantalla</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
