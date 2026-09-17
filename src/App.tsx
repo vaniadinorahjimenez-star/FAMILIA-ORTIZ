@@ -16,7 +16,8 @@ import {
   FamilyChatMessage,
   FamilyUserId,
   CloudSyncPayload,
-  ExtraPaymentConcept
+  ExtraPaymentConcept,
+  FamilyPhoto
 } from './types';
 import { 
   generateDailySchedule, 
@@ -44,17 +45,25 @@ import {
   getStoredFamilyChat,
   saveStoredFamilyChat,
   getStoredExtraPayments,
-  saveStoredExtraPayments
+  saveStoredExtraPayments,
+  getStoredFamilyPhotos,
+  saveStoredFamilyPhotos
 } from './utils/storage';
+import { idbGetAll, MEDIA_STORES } from './utils/indexedDBStorage';
 import { soundFX } from './utils/audio';
-import { getStoredActiveUser, saveStoredActiveUser } from './utils/familyUsers';
+import { 
+  getStoredActiveUser, 
+  saveStoredActiveUser, 
+  hasUserExplicitlyChosenProfile, 
+  FAMILY_USERS 
+} from './utils/familyUsers';
 import { 
   fetchCloudState, 
   pushCloudState, 
   mergeCloudData, 
   getStoredRoomId 
 } from './utils/cloudSync';
-import { realtimeChat } from './utils/realtimeChat';
+import { realtimeChat, OnlineUser } from './utils/realtimeChat';
 
 import { Header, ActiveTab } from './components/Header';
 import { DailyView } from './components/DailyView';
@@ -69,11 +78,19 @@ import { TaskCheckCelebrationModal } from './components/TaskCheckCelebrationModa
 import { RouletteModal } from './components/RouletteModal';
 import { UploadEvidenceModal } from './components/UploadEvidenceModal';
 import { TaskEvidencesView } from './components/TaskEvidencesView';
+import { FamilyPhotoAlbumView } from './components/FamilyPhotoAlbumView';
 import { FinesPolicePanel } from './components/FinesPolicePanel';
 import { FamilyChatView } from './components/FamilyChatView';
 import { FamilySyncModal } from './components/FamilySyncModal';
+import { FamilyDeviceConnectModal } from './components/FamilyDeviceConnectModal';
+import { DeviceProfileModal } from './components/DeviceProfileModal';
+import { MamaDailyLoveModal } from './components/MamaDailyLoveModal';
 import { NetworkStatusIndicator } from './components/NetworkStatusIndicator';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
+import { 
+  hasSeenMamaDailyReminderToday, 
+  sendMamaBrowserNotification 
+} from './utils/dailyReminder';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('daily');
@@ -83,6 +100,9 @@ export default function App() {
 
   // Active Family User on this device (Default: Mamá)
   const [activeUser, setActiveUser] = useState<FamilyUserId>(() => getStoredActiveUser());
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => !hasUserExplicitlyChosenProfile());
 
   // Cloud Sync state
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -100,6 +120,8 @@ export default function App() {
   const [fines, setFines] = useState<FineRecord[]>(() => getStoredFines());
   const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>(() => getStoredFamilyChat());
   const [extraPayments, setExtraPayments] = useState<ExtraPaymentConcept[]>(() => getStoredExtraPayments());
+  const [familyPhotos, setFamilyPhotos] = useState<FamilyPhoto[]>(() => getStoredFamilyPhotos());
+  const [photoSubTab, setPhotoSubTab] = useState<'album' | 'evidences'>('album');
 
   // Modal states
   const [isAddCustomOpen, setIsAddCustomOpen] = useState(false);
@@ -135,6 +157,21 @@ export default function App() {
     childId: 'romina',
   });
 
+  // Mama 1 Daily Love & Task Reminder Modal
+  const [isMamaLoveModalOpen, setIsMamaLoveModalOpen] = useState(false);
+  const [isManualMamaLoveOpen, setIsManualMamaLoveOpen] = useState(false);
+
+  // 1 Notificación al día recordando que mamá las ama y necesitan hacer sus tareas
+  useEffect(() => {
+    if (!hasSeenMamaDailyReminderToday()) {
+      const timer = setTimeout(() => {
+        setIsMamaLoveModalOpen(true);
+        sendMamaBrowserNotification();
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Handle active user change
   const handleUserChange = (newUser: FamilyUserId) => {
     setActiveUser(newUser);
@@ -153,9 +190,10 @@ export default function App() {
     fines,
     familyChat: chatMessages,
     extraPayments,
+    familyPhotos,
     lastUpdated: new Date().toISOString(),
     updatedBy: activeUser,
-  }), [completions, familyActivities, familyNotes, bonusLogs, customTasks, weeklyPayouts, evidences, fines, chatMessages, extraPayments, activeUser]);
+  }), [completions, familyActivities, familyNotes, bonusLogs, customTasks, weeklyPayouts, evidences, fines, chatMessages, extraPayments, familyPhotos, activeUser]);
 
   // Apply merged cloud data to state & storage
   const applyMergedPayload = useCallback((merged: CloudSyncPayload) => {
@@ -198,6 +236,10 @@ export default function App() {
     if (merged.extraPayments) {
       setExtraPayments(merged.extraPayments);
       saveStoredExtraPayments(merged.extraPayments);
+    }
+    if (merged.familyPhotos) {
+      setFamilyPhotos(merged.familyPhotos);
+      saveStoredFamilyPhotos(merged.familyPhotos);
     }
     setLastSyncTime(new Date().toISOString());
   }, []);
@@ -285,7 +327,7 @@ export default function App() {
     };
     initialSync();
 
-    // 2. Initial chat messages load from server
+    // 2. Initial chat messages & family photos load from server
     realtimeChat.fetchAllMessages().then((remoteMsgs) => {
       if (remoteMsgs && remoteMsgs.length > 0) {
         setChatMessages((prev) => {
@@ -299,6 +341,34 @@ export default function App() {
         });
       }
     });
+
+    realtimeChat.fetchFamilyPhotos().then((remotePhotos) => {
+      if (remotePhotos && remotePhotos.length > 0) {
+        setFamilyPhotos((prev) => {
+          const map = new Map<string, FamilyPhoto>();
+          [...prev, ...remotePhotos].forEach((p) => map.set(p.id, p));
+          const sorted = Array.from(map.values()).sort(
+            (a, b) => new Date(b.timestamp || b.date).getTime() - new Date(a.timestamp || a.date).getTime()
+          );
+          saveStoredFamilyPhotos(sorted);
+          return sorted;
+        });
+      }
+    });
+
+    // Hydrate any high-res photos stored in local IndexedDB
+    idbGetAll<FamilyPhoto>(MEDIA_STORES.PHOTOS).then((idbPhotos) => {
+      if (idbPhotos && idbPhotos.length > 0) {
+        setFamilyPhotos((prev) => {
+          const map = new Map<string, FamilyPhoto>();
+          [...prev, ...idbPhotos].forEach((p) => map.set(p.id, p));
+          const sorted = Array.from(map.values()).sort(
+            (a, b) => new Date(b.timestamp || b.date).getTime() - new Date(a.timestamp || a.date).getTime()
+          );
+          return sorted;
+        });
+      }
+    }).catch(() => {});
 
     // 3. Real-time multi-device subscription (instant event delivery across iPad, celular, PC)
     const unsubscribe = realtimeChat.subscribe((event) => {
@@ -328,6 +398,30 @@ export default function App() {
           saveStoredFamilyChat(updated);
           return updated;
         });
+      } else if (event.type === 'photo_added') {
+        setFamilyPhotos((prev) => {
+          const exists = prev.some((p) => p.id === event.photo.id);
+          const updated = exists
+            ? prev.map((p) => p.id === event.photo.id ? event.photo : p)
+            : [event.photo, ...prev];
+          saveStoredFamilyPhotos(updated);
+          if (!exists && event.photo.uploadedBy !== activeUser) {
+            soundFX.playCelebration();
+          }
+          return updated;
+        });
+      } else if (event.type === 'photo_updated') {
+        setFamilyPhotos((prev) => {
+          const updated = prev.map((p) => p.id === event.photo.id ? event.photo : p);
+          saveStoredFamilyPhotos(updated);
+          return updated;
+        });
+      } else if (event.type === 'photo_deleted') {
+        setFamilyPhotos((prev) => {
+          const updated = prev.filter((p) => p.id !== event.id);
+          saveStoredFamilyPhotos(updated);
+          return updated;
+        });
       } else if (event.type === 'init') {
         if (event.familyChat && Array.isArray(event.familyChat)) {
           setChatMessages((prev) => {
@@ -340,12 +434,36 @@ export default function App() {
             return sorted;
           });
         }
+        if (event.familyPhotos && Array.isArray(event.familyPhotos)) {
+          setFamilyPhotos((prev) => {
+            const map = new Map<string, FamilyPhoto>();
+            [...prev, ...event.familyPhotos!].forEach((p) => map.set(p.id, p));
+            const sorted = Array.from(map.values()).sort(
+              (a, b) => new Date(b.timestamp || b.date).getTime() - new Date(a.timestamp || a.date).getTime()
+            );
+            saveStoredFamilyPhotos(sorted);
+            return sorted;
+          });
+        }
+        if (event.onlineUsers && Array.isArray(event.onlineUsers)) {
+          setOnlineUsers(event.onlineUsers);
+        }
+      } else if (event.type === 'presence_update' && Array.isArray(event.onlineUsers)) {
+        setOnlineUsers(event.onlineUsers);
       } else if (event.type === 'sync_update' && event.payload) {
         applyMergedPayload(event.payload);
       }
     });
 
-    // 4. Fast Background Polling every 4 seconds to ensure full consistency across tabs
+    // 4. Report initial presence
+    const userProf = FAMILY_USERS.find((u) => u.id === activeUser);
+    realtimeChat.sendPresence({
+      userId: activeUser,
+      name: userProf?.name || activeUser,
+      avatarEmoji: userProf?.avatarEmoji || '🌸',
+    });
+
+    // 5. Fast Background Polling every 4 seconds to ensure full consistency across tabs
     const interval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing && networkStatus.isOnline) {
         try {
@@ -850,6 +968,76 @@ export default function App() {
     }
   };
 
+  // Family Photo Album Handlers (con descripción del día)
+  const handleAddFamilyPhoto = async (photo: FamilyPhoto) => {
+    setFamilyPhotos((prev) => {
+      const updated = [photo, ...prev.filter((p) => p.id !== photo.id)];
+      saveStoredFamilyPhotos(updated);
+      return updated;
+    });
+
+    try {
+      await realtimeChat.sendFamilyPhoto(photo);
+    } catch (err) {
+      console.warn('[Photos] Realtime send photo error:', err);
+    }
+
+    triggerDebouncedPush(getCurrentPayload());
+  };
+
+  const handleDeleteFamilyPhoto = async (id: string) => {
+    setFamilyPhotos((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      saveStoredFamilyPhotos(updated);
+      return updated;
+    });
+    try {
+      await realtimeChat.deleteFamilyPhoto(id);
+    } catch (err) {
+      console.warn('[Photos] Realtime delete photo error:', err);
+    }
+  };
+
+  const handleReactFamilyPhoto = async (photoId: string, emoji: string) => {
+    setFamilyPhotos((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === photoId) {
+          const currentCount = p.reactions?.[emoji] || 0;
+          return {
+            ...p,
+            reactions: {
+              ...(p.reactions || {}),
+              [emoji]: currentCount + 1,
+            },
+          };
+        }
+        return p;
+      });
+      saveStoredFamilyPhotos(updated);
+      return updated;
+    });
+    try {
+      await realtimeChat.reactFamilyPhoto(photoId, emoji);
+    } catch (err) {
+      console.warn('[Photos] Realtime react photo error:', err);
+    }
+  };
+
+  const handleSharePhotoToChat = (photo: FamilyPhoto) => {
+    const senderName = FAMILY_USERS.find((u) => u.id === activeUser)?.name || 'Mamá';
+    const text = `📸 Recuerdo del día: "${photo.title}" (${photo.date})\n"${photo.description}"`;
+    handleSendMessage({
+      id: `chat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      sender: senderName as any,
+      senderRole: activeUser,
+      text,
+      timestamp: new Date().toISOString(),
+      imageDataUrl: photo.imageDataUrl,
+    });
+    setActiveTab('chat');
+    soundFX.playCelebration();
+  };
+
   // Active fines count
   const activeFinesCount = useMemo(() => {
     return fines.filter((f) => f.status === 'activa').length;
@@ -925,6 +1113,11 @@ export default function App() {
         lastSyncTime={lastSyncTime}
         isOnline={networkStatus.isOnline}
         pendingChangesCount={networkStatus.pendingChangesCount}
+        onOpenMamaLoveReminder={() => {
+          setIsManualMamaLoveOpen(true);
+          setIsMamaLoveModalOpen(true);
+          soundFX.playCelebration();
+        }}
       />
 
       {/* Network & Offline Resilience Indicator Bar */}
@@ -1031,17 +1224,63 @@ export default function App() {
         )}
 
         {activeTab === 'photos' && (
-          <TaskEvidencesView
-            evidences={evidences}
-            onOpenUploadModal={(cid) => {
-              setUploadEvidenceContext({
-                childId: cid || (selectedChild === 'both' ? 'romina' : selectedChild),
-              });
-              setIsUploadEvidenceOpen(true);
-            }}
-            onDeleteEvidence={handleDeleteEvidence}
-            selectedChild={selectedChild}
-          />
+          <div className="space-y-6">
+            {/* Sub-tab switcher */}
+            <div className="flex items-center justify-center p-1.5 bg-slate-100/90 rounded-2xl max-w-md mx-auto border border-slate-200 shadow-xs">
+              <button
+                id="subtab-album-btn"
+                onClick={() => {
+                  setPhotoSubTab('album');
+                  soundFX.playPop();
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  photoSubTab === 'album'
+                    ? 'bg-white text-purple-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>📸 Álbum Familiar ({familyPhotos.length})</span>
+              </button>
+
+              <button
+                id="subtab-evidences-btn"
+                onClick={() => {
+                  setPhotoSubTab('evidences');
+                  soundFX.playPop();
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  photoSubTab === 'evidences'
+                    ? 'bg-white text-amber-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>📋 Evidencias de Misiones ({evidences.length})</span>
+              </button>
+            </div>
+
+            {photoSubTab === 'album' ? (
+              <FamilyPhotoAlbumView
+                photos={familyPhotos}
+                onAddPhoto={handleAddFamilyPhoto}
+                onDeletePhoto={handleDeleteFamilyPhoto}
+                onReactPhoto={handleReactFamilyPhoto}
+                onShareToChat={handleSharePhotoToChat}
+                activeUser={activeUser}
+              />
+            ) : (
+              <TaskEvidencesView
+                evidences={evidences}
+                onOpenUploadModal={(cid) => {
+                  setUploadEvidenceContext({
+                    childId: cid || (selectedChild === 'both' ? 'romina' : selectedChild),
+                  });
+                  setIsUploadEvidenceOpen(true);
+                }}
+                onDeleteEvidence={handleDeleteEvidence}
+                selectedChild={selectedChild}
+              />
+            )}
+          </div>
         )}
 
         {activeTab === 'fines' && (
@@ -1064,6 +1303,8 @@ export default function App() {
             onMamaApproveNotice={handleMamaApproveNotice}
             activeUser={activeUser}
             onSwitchUser={handleUserChange}
+            onlineUsers={onlineUsers}
+            onOpenConnectModal={() => setIsConnectModalOpen(true)}
           />
         )}
 
@@ -1142,6 +1383,31 @@ export default function App() {
         initialTaskTitle={uploadEvidenceContext.taskTitle}
         initialTaskId={uploadEvidenceContext.taskId}
         currentDate={currentDate}
+      />
+
+      <FamilyDeviceConnectModal
+        isOpen={isConnectModalOpen}
+        onClose={() => setIsConnectModalOpen(false)}
+        isOnline={networkStatus.isOnline}
+      />
+
+      <DeviceProfileModal
+        isOpen={isProfileModalOpen}
+        onSelectUser={(userId) => {
+          handleUserChange(userId);
+          setIsProfileModalOpen(false);
+        }}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
+
+      {/* Mama Daily Love & Task Reminder Modal */}
+      <MamaDailyLoveModal
+        isOpen={isMamaLoveModalOpen}
+        onClose={() => setIsMamaLoveModalOpen(false)}
+        isManualOpen={isManualMamaLoveOpen}
+        onGoToTasks={() => {
+          setActiveTab('daily');
+        }}
       />
     </div>
   );

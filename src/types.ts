@@ -155,6 +155,19 @@ export interface ExtraPaymentConcept {
   notes?: string;
 }
 
+export interface FamilyPhoto {
+  id: string;
+  title: string;
+  description: string; // descripción de ese día
+  date: string; // YYYY-MM-DD
+  timestamp: string;
+  imageDataUrl: string;
+  uploadedBy: FamilyUserId;
+  uploadedByName: string;
+  category?: 'familia' | 'paseo_luna' | 'viaje' | 'logro' | 'recuerdo';
+  reactions?: Record<string, number>;
+}
+
 export interface CloudSyncPayload {
   completions: Record<string, boolean>;
   familyActivities: FamilyActivity[];
@@ -166,6 +179,7 @@ export interface CloudSyncPayload {
   fines: FineRecord[];
   familyChat: FamilyChatMessage[];
   extraPayments?: ExtraPaymentConcept[];
+  familyPhotos?: FamilyPhoto[];
   lastUpdated: string;
   updatedBy?: string;
 }

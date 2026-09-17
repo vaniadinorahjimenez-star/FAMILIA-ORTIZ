@@ -267,6 +267,43 @@ export const DailyView: React.FC<DailyViewProps> = ({
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Mama Daily Reminder Card */}
+      {(() => {
+        const dayOfWeek = currentDate.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        return (
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 via-pink-50/60 to-amber-50 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-400 to-pink-500 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                👩‍👧‍👧
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-200 text-rose-900 flex items-center gap-1">
+                    <Heart className="w-2.5 h-2.5 fill-rose-600 text-rose-600" />
+                    Recordatorio de Mamá
+                  </span>
+                  {isWeekend ? (
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md">
+                      🏖️ Sábado y Domingo: Sin tareas de la escuela
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md">
+                      📚 Día escolar: Hacer tareas concentradas
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 mt-0.5">
+                  {isWeekend 
+                    ? '¡Mamá las ama con todo el corazón! Recuerden cumplir sus misiones de casa, cepillarse y consentir a Luna 🐶' 
+                    : '¡Mamá las ama con todo su corazón! Recuerden hacer sus tareas de la escuela y cumplir sus misiones con alegría ✨'}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Nan Police Surveillance Banner */}
       <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm ${
         activeFinesCount > 0 

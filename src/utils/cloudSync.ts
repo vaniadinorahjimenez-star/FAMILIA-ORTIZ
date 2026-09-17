@@ -8,7 +8,8 @@ import {
   TaskEvidence, 
   FineRecord, 
   FamilyChatMessage,
-  ExtraPaymentConcept 
+  ExtraPaymentConcept,
+  FamilyPhoto 
 } from '../types';
 
 const SYNC_KEYS = {
@@ -301,6 +302,31 @@ export function mergeCloudData(
     (a, b) => new Date(b.date || b.timestamp).getTime() - new Date(a.date || a.timestamp).getTime()
   );
 
+  // 11. Family photos (with description of the day)
+  const photosMap = new Map<string, FamilyPhoto>();
+  [...(local.familyPhotos || []), ...(remote.familyPhotos || [])].forEach((photo) => {
+    const existing = photosMap.get(photo.id);
+    if (!existing) {
+      photosMap.set(photo.id, photo);
+    } else {
+      const mergedReactions: Record<string, number> = { ...(existing.reactions || {}) };
+      if (photo.reactions) {
+        Object.entries(photo.reactions).forEach(([k, v]) => {
+          mergedReactions[k] = Math.max(mergedReactions[k] || 0, v);
+        });
+      }
+      photosMap.set(photo.id, {
+        ...existing,
+        ...photo,
+        reactions: mergedReactions,
+        description: photo.description || existing.description,
+      });
+    }
+  });
+  const mergedPhotos = Array.from(photosMap.values()).sort(
+    (a, b) => new Date(b.timestamp || b.date).getTime() - new Date(a.timestamp || a.date).getTime()
+  );
+
   return {
     completions: mergedCompletions,
     familyActivities: mergedActivities,
@@ -312,6 +338,7 @@ export function mergeCloudData(
     fines: mergedFines,
     familyChat: mergedChat,
     extraPayments: mergedExtraPayments,
+    familyPhotos: mergedPhotos,
     lastUpdated: new Date().toISOString(),
     updatedBy: local.updatedBy || remote.updatedBy,
   };

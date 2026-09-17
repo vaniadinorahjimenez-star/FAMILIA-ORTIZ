@@ -9,11 +9,16 @@ import {
   Clock,
   CornerDownRight,
   Sparkles,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Share2,
+  Users,
+  Wifi
 } from 'lucide-react';
 import { FamilyChatMessage, FamilyUserId } from '../types';
 import { soundFX } from '../utils/audio';
 import { FAMILY_USERS } from '../utils/familyUsers';
+import { OnlineUser } from '../utils/realtimeChat';
+import { compressImage } from '../utils/imageCompressor';
 
 interface FamilyChatViewProps {
   messages: FamilyChatMessage[];
@@ -23,6 +28,8 @@ interface FamilyChatViewProps {
   onMamaApproveNotice?: (messageId: string, comment?: string) => void;
   activeUser?: FamilyUserId;
   onSwitchUser?: (userId: FamilyUserId) => void;
+  onlineUsers?: OnlineUser[];
+  onOpenConnectModal?: () => void;
 }
 
 type ChatSender = 'Mamá' | 'Papá' | 'Regina' | 'Romina' | 'Nan';
@@ -68,6 +75,8 @@ export const FamilyChatView: React.FC<FamilyChatViewProps> = ({
   onAddReaction,
   activeUser = 'mama',
   onSwitchUser,
+  onlineUsers = [],
+  onOpenConnectModal,
 }) => {
   // Map active user to sender
   const defaultSender: ChatSender = 
@@ -128,15 +137,27 @@ export const FamilyChatView: React.FC<FamilyChatViewProps> = ({
     soundFX.playPop();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    setIsCompressingPhoto(true);
+    try {
+      // Compress iPad / camera photo so it sends instantly in realtime
+      const compressed = await compressImage(file, 1200, 1200, 0.8);
+      setImageDataUrl(compressed.dataUrl);
+      soundFX.playChime();
+    } catch {
       const reader = new FileReader();
       reader.onload = (event) => {
         setImageDataUrl(event.target?.result as string);
         soundFX.playChime();
       };
       reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingPhoto(false);
     }
   };
 
@@ -225,6 +246,44 @@ export const FamilyChatView: React.FC<FamilyChatViewProps> = ({
             iPad • Celular • Computadora
           </span>
         </div>
+      </div>
+
+      {/* Live Online Presence & Connect Bar */}
+      <div className="bg-white rounded-2xl p-3.5 border border-pink-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            <span>En línea ahora:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {onlineUsers && onlineUsers.length > 0 ? (
+              onlineUsers.map((u) => (
+                <span
+                  key={u.userId}
+                  className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-xl shadow-2xs"
+                >
+                  <span className="text-sm leading-none">{u.avatarEmoji}</span>
+                  <span>{u.name}</span>
+                </span>
+              ))
+            ) : (
+              <span className="inline-flex items-center gap-1 bg-pink-50 border border-pink-200 text-pink-700 text-xs font-medium px-2.5 py-1 rounded-xl">
+                <span>👩 Mamá activa</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {onOpenConnectModal && (
+          <button
+            onClick={onOpenConnectModal}
+            className="self-start sm:self-center px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Conectar iPads de las niñas</span>
+          </button>
+        )}
       </div>
 
       {/* Filter Tabs */}

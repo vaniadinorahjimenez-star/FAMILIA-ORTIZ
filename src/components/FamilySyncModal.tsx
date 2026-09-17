@@ -15,7 +15,7 @@ import {
   Wifi,
   HardDrive
 } from 'lucide-react';
-import { FAMILY_USERS } from '../utils/familyUsers';
+import { FAMILY_USERS, generateUserDirectLink } from '../utils/familyUsers';
 import { 
   getStoredRoomId, 
   saveStoredRoomId, 
@@ -53,10 +53,23 @@ export const FamilySyncModal: React.FC<FamilySyncModalProps> = ({
   const [roomId, setRoomId] = useState(() => getStoredRoomId());
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedRoom, setCopiedRoom] = useState(false);
+  const [copiedUserLink, setCopiedUserLink] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleCopyUserLink = (userId: string, userName: string) => {
+    const link = generateUserDirectLink(userId as any);
+    navigator.clipboard.writeText(link);
+    setCopiedUserLink(userId);
+    setSyncFeedback(`¡Link directo para ${userName} copiado!`);
+    soundFX.playChime();
+    setTimeout(() => {
+      setCopiedUserLink(null);
+      setSyncFeedback(null);
+    }, 2500);
+  };
 
   const handleTestConnection = async () => {
     if (!onCheckConnection) return;
@@ -126,35 +139,35 @@ export const FamilySyncModal: React.FC<FamilySyncModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] shadow-2xl border border-slate-200 flex flex-col justify-between overflow-hidden"
+        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 flex flex-col justify-between overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-gradient-to-r from-teal-600 via-emerald-600 to-sky-600 text-white flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner">
-              <Cloud className="w-5 h-5 animate-pulse" />
+        <div className="px-3.5 py-2.5 bg-gradient-to-r from-teal-600 via-emerald-600 to-sky-600 text-white flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner">
+              <Cloud className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-1.5 leading-tight">
                 Sincronización Familiar ☁️
               </h2>
-              <p className="text-[11px] text-emerald-100">
+              <p className="text-[10px] text-emerald-100">
                 5 Miembros Conectados en Tiempo Real
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Cerrar"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Content - 2 Columns on iPad / landscape */}
-        <div className="p-3.5 sm:p-4 space-y-2.5 text-slate-800 flex-1 overflow-y-auto">
+        {/* Content */}
+        <div className="p-3 space-y-2 text-slate-800 flex-1">
           {/* Status Box */}
           {!isOnline ? (
             <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 space-y-2">
@@ -238,28 +251,37 @@ export const FamilySyncModal: React.FC<FamilySyncModalProps> = ({
 
           {/* 5 Family Members Status */}
           <div>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-emerald-600" />
-              Familia Conectada (5 Miembros)
-            </h3>
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                Familia Conectada (Toca para copiar su link)
+              </h3>
+            </div>
             <div className="grid grid-cols-5 gap-1.5">
               {FAMILY_USERS.map((user) => {
                 const isCurrent = activeUser === user.id;
+                const isCopied = copiedUserLink === user.id;
                 return (
-                  <div
+                  <button
                     key={user.id}
-                    className={`p-1.5 rounded-xl border text-center transition-all ${
-                      isCurrent 
+                    onClick={() => handleCopyUserLink(user.id, user.name)}
+                    className={`p-1.5 rounded-xl border text-center transition-all cursor-pointer hover:border-emerald-400 active:scale-95 ${
+                      isCopied
+                        ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
+                        : isCurrent 
                         ? 'bg-emerald-100/70 border-emerald-400 ring-1 ring-emerald-500/20 shadow-2xs' 
-                        : 'bg-slate-50 border-slate-200'
+                        : 'bg-slate-50 hover:bg-emerald-50/50 border-slate-200'
                     }`}
+                    title={`Toca para copiar el link directo de ${user.name}`}
                   >
                     <div className="text-lg leading-none mb-0.5">{user.avatarEmoji}</div>
-                    <div className="font-bold text-[11px] text-slate-800 truncate">{user.name}</div>
-                    <div className="text-[9px] text-slate-500 truncate">
-                      {isCurrent ? '📱 Activo' : '🟢 En línea'}
+                    <div className={`font-bold text-[11px] truncate ${isCopied ? 'text-white' : 'text-slate-800'}`}>
+                      {user.name}
                     </div>
-                  </div>
+                    <div className={`text-[9px] truncate ${isCopied ? 'text-emerald-100 font-bold' : 'text-slate-500'}`}>
+                      {isCopied ? '¡Copiado!' : isCurrent ? '📱 Activo' : '🔗 Copiar'}
+                    </div>
+                  </button>
                 );
               })}
             </div>

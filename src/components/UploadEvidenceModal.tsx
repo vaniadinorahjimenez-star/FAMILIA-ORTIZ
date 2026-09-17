@@ -11,6 +11,7 @@ import {
 import { ChildId, TaskEvidence } from '../types';
 import { soundFX } from '../utils/audio';
 import { formatDateKey } from '../utils/scheduleGenerator';
+import { compressImage } from '../utils/imageCompressor';
 
 interface UploadEvidenceModalProps {
   isOpen: boolean;
@@ -53,27 +54,36 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFileProcess = (file: File) => {
+  const [isCompressing, setIsCompressing] = useState(false);
+
+  const handleFileProcess = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).');
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      setError('La imagen es muy pesada. Por favor selecciona una de menos de 8MB.');
-      return;
-    }
-
     setError('');
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageDataUrl(reader.result as string);
+    setIsCompressing(true);
+    try {
+      // Intelligently compress iPad/iPhone/camera photos
+      const compressed = await compressImage(file, 1200, 1200, 0.8);
+      setImageDataUrl(compressed.dataUrl);
       soundFX.playCheck();
-    };
-    reader.onerror = () => {
-      setError('Error al leer el archivo. Intenta con otra foto.');
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.warn('Error comprimiendo imagen:', err);
+      // Fallback to direct FileReader if canvas fails
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageDataUrl(reader.result as string);
+        soundFX.playCheck();
+      };
+      reader.onerror = () => {
+        setError('Error al leer el archivo. Intenta con otra foto.');
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -136,20 +146,20 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
     >
       <div 
         id="upload-evidence-modal-card"
-        className="w-full max-w-lg md:max-w-2xl bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border-2 border-purple-200 relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+        className="w-full max-w-lg sm:max-w-xl bg-white rounded-3xl p-3 sm:p-4 shadow-2xl border-2 border-purple-200 relative flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-purple-100 text-purple-700 rounded-xl">
-              <Camera className="w-5 h-5" />
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-2">
+          <div className="flex items-center gap-1.5">
+            <div className="p-1 bg-purple-100 text-purple-700 rounded-lg">
+              <Camera className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold font-['Fredoka',sans-serif] text-slate-900 leading-tight">
+              <h3 className="text-sm sm:text-base font-bold font-['Fredoka',sans-serif] text-slate-900 leading-tight">
                 Subir Foto de Actividad Cumplida 📸
               </h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[10px] text-slate-500">
                 Evidencia de rutina o reto completado para la familia
               </p>
             </div>
@@ -157,31 +167,31 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
             aria-label="Cerrar"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-2 p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div className="mb-1.5 p-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Responsive 2-column on iPad/tablets */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+        <form onSubmit={handleSubmit} className="space-y-2">
+          {/* Responsive 2-column on sm+ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-start">
             {/* Left Column: Details */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {/* Who completed it */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-0.5">
                   ¿Quién cumplió la actividad? *
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-1">
                   <button
                     type="button"
                     id="select-evidence-romina-btn"
@@ -189,7 +199,7 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
                       setChildId('romina');
                       soundFX.playPop();
                     }}
-                    className={`py-1.5 px-2 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    className={`py-1 px-1.5 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       childId === 'romina'
                         ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-2xs'
                         : 'border-slate-200 hover:border-slate-300 text-slate-600'
@@ -205,7 +215,7 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
                       setChildId('regina');
                       soundFX.playPop();
                     }}
-                    className={`py-1.5 px-2 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    className={`py-1 px-1.5 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       childId === 'regina'
                         ? 'border-purple-600 bg-purple-50 text-purple-900 shadow-2xs'
                         : 'border-slate-200 hover:border-slate-300 text-slate-600'
@@ -218,7 +228,7 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
 
               {/* Activity title */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-0.5">
                   Actividad Realizada *
                 </label>
                 <input
@@ -227,13 +237,13 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
                   placeholder="Ej: Paseo con Luna, Tarea escolar..."
-                  className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                  className="w-full px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-purple-400 focus:outline-none"
                 />
               </div>
 
               {/* Optional Caption */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-0.5">
                   Comentario (opcional)
                 </label>
                 <input
@@ -241,14 +251,14 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="Ej: ¡Luna corrió feliz en el parque!"
-                  className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                  className="w-full px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-purple-400 focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Right Column: Photo Uploader / Preview */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-0.5">
                 Foto de la actividad *
               </label>
 
@@ -267,51 +277,48 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`p-3 sm:p-4 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[120px] ${
+                  className={`p-2 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[95px] ${
                     isDragging
                       ? 'border-purple-500 bg-purple-50 scale-[1.01]'
                       : 'border-slate-300 hover:border-purple-400 bg-slate-50/70 hover:bg-purple-50/40'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-1">
-                    <UploadCloud className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-0.5">
+                    <UploadCloud className="w-3.5 h-3.5" />
                   </div>
-                  <h4 className="text-xs font-bold text-slate-800">
+                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">
                     Tomar o subir foto
                   </h4>
-                  <p className="text-[10px] text-slate-500">
-                    Haz clic aquí para abrir cámara o galería
-                  </p>
-                  <span className="mt-1.5 px-2.5 py-1 bg-purple-600 text-white text-[10px] font-bold rounded-lg shadow-2xs">
-                    Abrir Cámara / Galería 📷
+                  <span className="mt-1 px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-lg shadow-2xs">
+                    Cámara / Galería 📷
                   </span>
                 </div>
               ) : (
-                <div className="relative rounded-2xl overflow-hidden border-2 border-purple-300 group max-h-[130px] flex items-center justify-center bg-slate-100">
+                <div className="relative rounded-2xl overflow-hidden border-2 border-purple-300 group h-[95px] flex items-center justify-center bg-slate-100">
                   <img
                     src={imageDataUrl}
                     alt="Vista previa"
-                    className="w-full h-32 object-cover"
+                    className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-2.5 py-1 bg-white text-slate-800 font-bold text-[10px] rounded-lg shadow"
+                      className="px-2 py-0.5 bg-white text-slate-800 font-bold text-[9px] rounded-md shadow"
                     >
-                      Cambiar 🔄
+                      Cambiar
                     </button>
                     <button
                       type="button"
                       onClick={() => setImageDataUrl('')}
-                      className="px-2.5 py-1 bg-rose-600 text-white font-bold text-[10px] rounded-lg shadow"
+                      className="px-2 py-0.5 bg-rose-600 text-white font-bold text-[9px] rounded-md shadow"
                     >
-                      Quitar ✕
+                      Quitar
                     </button>
                   </div>
-                  <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded-md backdrop-blur-xs flex items-center gap-1">
-                    <Check className="w-2.5 h-2.5 text-emerald-400" />
-                    <span>Foto lista</span>
+                  <div className="absolute bottom-1 left-1 px-1.5 py-0.2 bg-black/60 text-white text-[9px] font-bold rounded backdrop-blur-xs flex items-center gap-0.5">
+                    <Check className="w-2 h-2 text-emerald-400" />
+                    <span>Lista</span>
                   </div>
                 </div>
               )}
@@ -319,18 +326,18 @@ export const UploadEvidenceModal: React.FC<UploadEvidenceModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-1.5 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!imageDataUrl || !taskTitle.trim()}
-              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Guardar Evidencia</span>

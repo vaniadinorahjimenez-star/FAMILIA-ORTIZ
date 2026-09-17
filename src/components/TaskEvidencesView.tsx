@@ -236,40 +236,40 @@ export const TaskEvidencesView: React.FC<TaskEvidencesViewProps> = ({
       {zoomedEvidence && (
         <div
           onClick={() => setZoomedEvidence(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-xs animate-in fade-in"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-xl max-h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between animate-in zoom-in-95"
+            className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between animate-in zoom-in-95"
           >
-            <div className="relative bg-black flex items-center justify-center max-h-[55vh] flex-1 min-h-[160px]">
+            <div className="relative bg-black flex items-center justify-center max-h-[38vh] flex-1 min-h-[140px]">
               {zoomedEvidence.imageDataUrl ? (
                 <img
                   src={zoomedEvidence.imageDataUrl}
                   alt={zoomedEvidence.taskTitle}
-                  className="max-h-[55vh] w-auto object-contain"
+                  className="max-h-[38vh] w-auto object-contain"
                 />
               ) : (
-                <div className="py-12 text-white text-center">
-                  <Sparkles className="w-10 h-10 text-amber-400 mx-auto mb-1.5" />
-                  <p className="font-bold text-sm">Foto de evidencia</p>
+                <div className="py-8 text-white text-center">
+                  <Sparkles className="w-8 h-8 text-amber-400 mx-auto mb-1" />
+                  <p className="font-bold text-xs">Foto de evidencia</p>
                 </div>
               )}
 
               <button
                 onClick={() => setZoomedEvidence(null)}
-                className="absolute top-2.5 right-2.5 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer"
+                className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer"
                 aria-label="Cerrar"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 bg-white flex-shrink-0 border-t border-slate-100">
+            <div className="p-2.5 sm:p-3 flex items-center justify-between gap-2.5 bg-white flex-shrink-0 border-t border-slate-100">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    className={`px-2 py-0.2 rounded-full text-[9px] font-black ${
                       zoomedEvidence.childId === 'romina'
                         ? 'bg-rose-100 text-rose-800'
                         : 'bg-purple-100 text-purple-800'
@@ -277,13 +277,13 @@ export const TaskEvidencesView: React.FC<TaskEvidencesViewProps> = ({
                   >
                     {zoomedEvidence.childId === 'romina' ? '🌸 Romina' : '💜 Regina'}
                   </span>
-                  <span className="text-[11px] text-slate-400">{zoomedEvidence.date}</span>
+                  <span className="text-[10px] text-slate-400">{zoomedEvidence.date}</span>
                 </div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
                   {zoomedEvidence.taskTitle}
                 </h3>
                 {zoomedEvidence.caption && (
-                  <p className="text-xs text-slate-600 italic truncate mt-0.5">
+                  <p className="text-[11px] text-slate-600 italic truncate mt-0.5">
                     &ldquo;{zoomedEvidence.caption}&rdquo;
                   </p>
                 )}
@@ -291,7 +291,7 @@ export const TaskEvidencesView: React.FC<TaskEvidencesViewProps> = ({
 
               <button
                 onClick={() => setZoomedEvidence(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex-shrink-0 cursor-pointer"
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex-shrink-0 cursor-pointer"
               >
                 Cerrar
               </button>

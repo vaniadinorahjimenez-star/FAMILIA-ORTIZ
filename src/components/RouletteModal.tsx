@@ -150,48 +150,48 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
       onClick={onClose}
     >
-      {/* Fitted single-screen card for iPad & tablets: horizontal 2-col on sm/md */}
+      {/* Fitted single-screen card for iPad & tablets: horizontal 2-col on sm+ */}
       <div 
         id="roulette-modal-card"
-        className="w-full max-w-lg md:max-w-2xl bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border-3 border-amber-300 relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+        className="w-full max-w-lg sm:max-w-2xl bg-white rounded-3xl p-3 sm:p-4 shadow-2xl border-3 border-amber-300 relative flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
           disabled={isSpinning}
-          className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 z-20 cursor-pointer"
+          className="absolute top-2.5 right-2.5 p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 z-20 cursor-pointer"
           aria-label="Cerrar"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Compact Header for all screen sizes */}
-        <div className="flex items-center gap-2 mb-2 pr-8">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[10px] font-black uppercase tracking-wider">
-            <Sparkles className="w-3 h-3 text-amber-600" />
+        <div className="flex items-center gap-2 mb-1.5 pr-8">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[9px] font-black uppercase tracking-wider">
+            <Sparkles className="w-2.5 h-2.5 text-amber-600" />
             ¡La Suerte Decide!
           </span>
-          <h3 className="text-base sm:text-lg font-black font-['Fredoka',sans-serif] text-slate-900 truncate">
+          <h3 className="text-sm sm:text-base font-black font-['Fredoka',sans-serif] text-slate-900 truncate">
             Ruleta de Bonos Sin Pantallas 🎡
           </h3>
         </div>
 
         {/* 2-Column Responsive Body for iPad (fits without any scroll) */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 items-center">
           {/* Left Column (Wheel + Spin button) */}
-          <div className="md:col-span-6 flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center">
             {/* Roulette Wheel Stage */}
-            <div className="relative inline-flex items-center justify-center my-1">
+            <div className="relative inline-flex items-center justify-center my-0.5">
               {/* Top Indicator Arrow */}
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[18px] border-t-amber-500 drop-shadow-sm" />
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-t-[15px] border-t-amber-500 drop-shadow-xs" />
 
               {/* Canvas Wheel */}
-              <div className="p-1.5 rounded-full bg-gradient-to-tr from-amber-200 via-yellow-100 to-rose-200 shadow-lg border-2 border-white">
+              <div className="p-1 rounded-full bg-gradient-to-tr from-amber-200 via-yellow-100 to-rose-200 shadow-md border border-white">
                 <canvas
                   ref={canvasRef}
-                  width={210}
-                  height={210}
+                  width={180}
+                  height={180}
                   className="rounded-full transition-transform duration-[3500ms] cubic-bezier(0.15, 0.95, 0.35, 1.0)"
                   style={{
                     transform: `rotate(${rotationDegrees}deg)`,
@@ -206,21 +206,21 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
               id="spin-wheel-btn"
               onClick={handleSpin}
               disabled={isSpinning}
-              className={`w-full max-w-[240px] mt-2 py-2 px-4 rounded-xl font-bold font-['Fredoka',sans-serif] text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`w-full max-w-[210px] mt-1.5 py-1.5 px-3 rounded-xl font-bold font-['Fredoka',sans-serif] text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 isSpinning
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white active:scale-98'
               }`}
             >
-              <RotateCw className={`w-4 h-4 ${isSpinning ? 'animate-spin' : ''}`} />
+              <RotateCw className={`w-3.5 h-3.5 ${isSpinning ? 'animate-spin' : ''}`} />
               <span>{isSpinning ? '¡Girando...!' : '¡Girar la Ruleta! 🎡'}</span>
             </button>
           </div>
 
           {/* Right Column (Child Selector, Status & Result Card) */}
-          <div className="md:col-span-6 flex flex-col justify-center space-y-2 text-left">
+          <div className="flex flex-col justify-center space-y-1.5 text-left">
             {/* Child Selector */}
-            <div className="flex items-center justify-between gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                 ¿Quién gira?:
               </span>
@@ -228,9 +228,9 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
                 <button
                   onClick={() => onSelectChild('romina')}
                   disabled={isSpinning}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     selectedChild === 'romina'
-                      ? 'bg-rose-500 text-white shadow-xs'
+                      ? 'bg-rose-500 text-white shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -239,9 +239,9 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
                 <button
                   onClick={() => onSelectChild('regina')}
                   disabled={isSpinning}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     selectedChild === 'regina'
-                      ? 'bg-purple-600 text-white shadow-xs'
+                      ? 'bg-purple-600 text-white shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -252,40 +252,40 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
 
             {/* 1 Bonus Daily Notice */}
             {alreadyDoneToday && (
-              <div className="p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11px] text-amber-900 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+              <div className="p-1.5 bg-amber-50 border border-amber-300 rounded-xl text-[10px] text-amber-900 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />
                 <span className="leading-tight">
-                  <strong>{selectedChild === 'romina' ? 'Romina' : 'Regina'}</strong> ya reclamó su bono de hoy. ¡Gira por diversión!
+                  <strong>{selectedChild === 'romina' ? 'Romina' : 'Regina'}</strong> ya reclamó su bono hoy.
                 </span>
               </div>
             )}
 
             {/* Result Card or Placeholder */}
             {selectedBonus ? (
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-rose-50 border-2 border-amber-300 animate-in zoom-in-95">
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-50 to-rose-50 border border-amber-300 animate-in zoom-in-95">
+                <div className="flex items-center justify-between gap-1 mb-0.5">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded">
                     ¡Premio! 🎉
                   </span>
-                  <div className="flex items-center gap-1 text-xs font-black text-emerald-700">
-                    <Coins className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-0.5 text-xs font-black text-emerald-700">
+                    <Coins className="w-3 h-3" />
                     +${selectedBonus.pesosReward} MXN ({selectedBonus.points} pts)
                   </div>
                 </div>
 
-                <h4 className="text-sm font-bold text-slate-800 leading-snug">
+                <h4 className="text-xs font-bold text-slate-800 leading-tight">
                   {selectedBonus.title}
                 </h4>
-                <p className="text-[11px] text-slate-600 mt-0.5 leading-tight line-clamp-2">
+                <p className="text-[10px] text-slate-600 mt-0.5 leading-tight line-clamp-2">
                   {selectedBonus.description}
                 </p>
 
-                <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-center gap-1.5">
+                <div className="mt-1.5 pt-1.5 border-t border-amber-200 flex items-center gap-1">
                   <button
                     id="claim-roulette-bonus-btn"
                     onClick={handleClaim}
                     disabled={alreadyDoneToday}
-                    className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer ${
+                    className={`flex-1 py-1.5 px-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-2xs cursor-pointer ${
                       alreadyDoneToday
                         ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                         : selectedChild === 'romina'
@@ -293,16 +293,16 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
                         : 'bg-purple-600 hover:bg-purple-700 text-white'
                     }`}
                   >
-                    <CheckCircle className="w-3.5 h-3.5" />
+                    <CheckCircle className="w-3 h-3" />
                     <span>
-                      {alreadyDoneToday ? 'Límite alcanzado' : `¡Aceptar para ${selectedChild === 'romina' ? 'Romina' : 'Regina'}!`}
+                      {alreadyDoneToday ? 'Ya reclamado hoy' : `¡Aceptar para ${selectedChild === 'romina' ? 'Romina' : 'Regina'}!`}
                     </span>
                   </button>
 
                   <button
                     onClick={handleSpin}
                     disabled={isSpinning}
-                    className="py-2 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs cursor-pointer"
+                    className="py-1 px-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs cursor-pointer"
                     title="Girar de nuevo"
                   >
                     🔄
@@ -310,12 +310,12 @@ export const RouletteModal: React.FC<RouletteModalProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center py-4">
+              <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-center py-2.5">
                 <p className="text-xs font-bold text-slate-700">
-                  ¡Haz clic en "Girar la Ruleta"! 🎯
+                  ¡Toca "Girar la Ruleta"! 🎯
                 </p>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Obtén retos de manualidades, dibujo, cartas a Nan o paseos especiales con Luna para sumar pesos a tu meta.
+                <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                  Retos de manualidades, dibujo, cartas o paseos para sumar pesos a tu meta.
                 </p>
               </div>
             )}

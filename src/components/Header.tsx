@@ -19,7 +19,8 @@ import {
   UserCheck,
   ChevronDown,
   WifiOff,
-  Wifi
+  Wifi,
+  Heart
 } from 'lucide-react';
 import { ChildId, FamilyUserId } from '../types';
 import { soundFX } from '../utils/audio';
@@ -53,6 +54,7 @@ interface HeaderProps {
   lastSyncTime?: string | null;
   isOnline?: boolean;
   pendingChangesCount?: number;
+  onOpenMamaLoveReminder?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -73,6 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
   lastSyncTime,
   isOnline = true,
   pendingChangesCount = 0,
+  onOpenMamaLoveReminder,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -251,6 +254,22 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-sky-500 animate-spin' : 'bg-emerald-500 animate-pulse'}`} />
                   </>
                 )}
+              </button>
+            )}
+
+            {/* Mama Daily Love Reminder Button */}
+            {onOpenMamaLoveReminder && (
+              <button
+                id="header-mama-love-btn"
+                onClick={onOpenMamaLoveReminder}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/90 hover:bg-rose-100 text-rose-800 text-xs font-bold transition-all shadow-2xs cursor-pointer group"
+                title="💌 Recordatorio Diario con Amor de Mamá (1 al día)"
+              >
+                <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500 group-hover:scale-110 transition-transform" />
+                <span className="hidden lg:inline">Amor de Mamá</span>
+                <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                  1 al día
+                </span>
               </button>
             )}
 
@@ -440,7 +459,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Camera className="w-4 h-4 text-purple-600" />
-            <span>Fotos &amp; Evidencias 📸</span>
+            <span>Fotos &amp; Recuerdos 📸</span>
           </button>
 
           <button

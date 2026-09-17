@@ -167,6 +167,7 @@ interface CloudDbState {
   taskEvidences: any[];
   fines: any[];
   extraPayments: any[];
+  familyPhotos: any[];
   lastUpdated: string;
 }
 
@@ -204,6 +205,32 @@ const initialSeedState: CloudDbState = {
   taskEvidences: [],
   fines: [],
   extraPayments: [],
+  familyPhotos: [
+    {
+      id: 'photo-seed-1',
+      title: 'Tarde de parque con Lunita 🐩🌳',
+      description: 'Fuimos al parque a correr con Luna. Romina le lanzó la pelota y Regina le enseñó a dar la patita. ¡Un día súper divertido en familia!',
+      date: '2026-09-15',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+      imageDataUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&auto=format&fit=crop&q=80',
+      uploadedBy: 'mama',
+      uploadedByName: 'Mamá 👩',
+      category: 'paseo_luna',
+      reactions: { '❤️': 4, '🐾': 3, '🌟': 2 },
+    },
+    {
+      id: 'photo-seed-2',
+      title: 'Tardes de piano y estudio 🎹🎶',
+      description: 'Regina practicó su escala favorita y Romina se aprendió una canción nueva. Mamá y Papá estuvieron aplaudiendo al final del recitalito casero.',
+      date: '2026-09-16',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      imageDataUrl: 'https://images.unsplash.com/photo-1520523839898-507127054976?w=800&auto=format&fit=crop&q=80',
+      uploadedBy: 'regina',
+      uploadedByName: 'Regina 💜',
+      category: 'logro',
+      reactions: { '👏': 5, '❤️': 3 },
+    }
+  ],
   lastUpdated: new Date().toISOString(),
 };
 
@@ -255,6 +282,40 @@ const wsClients = new Set<WebSocket>();
 // SSE clients for /api/realtime/stream
 const sseClients = new Set<express.Response>();
 
+// Online family presence tracking
+interface OnlineUser {
+  userId: string;
+  name: string;
+  avatarEmoji: string;
+  lastSeen: number;
+}
+const onlineUsers = new Map<string, OnlineUser>();
+
+function getActiveOnlineUsers(): OnlineUser[] {
+  const cutoff = Date.now() - 35000;
+  for (const [id, user] of onlineUsers.entries()) {
+    if (user.lastSeen < cutoff) {
+      onlineUsers.delete(id);
+    }
+  }
+  return Array.from(onlineUsers.values());
+}
+
+function updatePresence(user: { userId: string; name?: string; avatarEmoji?: string }) {
+  if (!user || !user.userId) return;
+  onlineUsers.set(user.userId, {
+    userId: user.userId,
+    name: user.name || user.userId,
+    avatarEmoji: user.avatarEmoji || '🌸',
+    lastSeen: Date.now(),
+  });
+  const active = getActiveOnlineUsers();
+  broadcast({
+    type: 'presence_update',
+    onlineUsers: active,
+  });
+}
+
 function broadcast(event: { type: string; [key: string]: any }) {
   const jsonStr = JSON.stringify(event);
 
@@ -288,6 +349,7 @@ wss.on('connection', (ws) => {
     type: 'init',
     familyChat: dbState.familyChat,
     lastUpdated: dbState.lastUpdated,
+    onlineUsers: getActiveOnlineUsers(),
   }));
 
   ws.on('message', (data) => {
@@ -295,6 +357,10 @@ wss.on('connection', (ws) => {
       const parsed = JSON.parse(data.toString());
       if (parsed.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+      if (parsed.type === 'presence') {
+        updatePresence(parsed);
         return;
       }
       if (parsed.type === 'chat_message' && parsed.message) {
@@ -328,6 +394,7 @@ app.get('/api/realtime/stream', (req, res) => {
     type: 'init',
     familyChat: dbState.familyChat,
     lastUpdated: dbState.lastUpdated,
+    onlineUsers: getActiveOnlineUsers(),
   })}\n\n`);
 
   // Periodic heartbeat every 20 seconds to prevent proxy / Safari drop
@@ -565,6 +632,19 @@ app.post('/api/chat/approve', (req, res) => {
   res.json({ success: true, message: targetMsg });
 });
 
+// Presence endpoint for active online members
+app.post('/api/presence', (req, res) => {
+  const { userId, name, avatarEmoji } = req.body;
+  if (userId) {
+    updatePresence({ userId, name, avatarEmoji });
+  }
+  res.json({ success: true, onlineUsers: getActiveOnlineUsers() });
+});
+
+app.get('/api/presence', (req, res) => {
+  res.json({ onlineUsers: getActiveOnlineUsers() });
+});
+
 // Full Cloud Sync GET
 app.get('/api/sync', (req, res) => {
   res.json(dbState);
@@ -684,6 +764,26 @@ app.post('/api/sync', (req, res) => {
     );
   }
 
+  // Merge family photos
+  if (Array.isArray(payload.familyPhotos)) {
+    const map = new Map<string, any>();
+    [...(dbState.familyPhotos || []), ...payload.familyPhotos].forEach((item) => {
+      const existing = map.get(item.id);
+      if (!existing) {
+        map.set(item.id, item);
+      } else {
+        map.set(item.id, {
+          ...existing,
+          ...item,
+          reactions: { ...(existing.reactions || {}), ...(item.reactions || {}) },
+        });
+      }
+    });
+    dbState.familyPhotos = Array.from(map.values()).sort(
+      (a, b) => new Date(b.timestamp || b.date).getTime() - new Date(a.timestamp || a.date).getTime()
+    );
+  }
+
   dbState.lastUpdated = new Date().toISOString();
   saveDatabase();
 
@@ -695,6 +795,102 @@ app.post('/api/sync', (req, res) => {
   });
 
   res.json(dbState);
+});
+
+// Dedicated Family Photos REST Endpoints
+app.get('/api/photos', (req, res) => {
+  res.json({
+    photos: dbState.familyPhotos || [],
+    lastUpdated: dbState.lastUpdated,
+  });
+});
+
+app.post('/api/photos', (req, res) => {
+  const photo = req.body;
+  if (!photo || !photo.imageDataUrl) {
+    res.status(400).json({ error: 'Se requiere imagen' });
+    return;
+  }
+
+  const completePhoto = {
+    ...photo,
+    id: photo.id || `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    date: photo.date || new Date().toISOString().split('T')[0],
+    timestamp: photo.timestamp || new Date().toISOString(),
+    reactions: photo.reactions || {},
+  };
+
+  if (!dbState.familyPhotos) {
+    dbState.familyPhotos = [];
+  }
+
+  const existingIdx = dbState.familyPhotos.findIndex((p) => p.id === completePhoto.id);
+  if (existingIdx >= 0) {
+    dbState.familyPhotos[existingIdx] = completePhoto;
+  } else {
+    dbState.familyPhotos.unshift(completePhoto);
+  }
+
+  dbState.lastUpdated = new Date().toISOString();
+  saveDatabase();
+
+  // Broadcast to all connected clients
+  broadcast({
+    type: 'photo_added',
+    photo: completePhoto,
+    totalCount: dbState.familyPhotos.length,
+  });
+
+  res.json({ success: true, photo: completePhoto });
+});
+
+app.delete('/api/photos/:id', (req, res) => {
+  const { id } = req.params;
+  if (!dbState.familyPhotos) {
+    dbState.familyPhotos = [];
+  }
+  const beforeCount = dbState.familyPhotos.length;
+  dbState.familyPhotos = dbState.familyPhotos.filter((p) => p.id !== id);
+
+  if (dbState.familyPhotos.length !== beforeCount) {
+    dbState.lastUpdated = new Date().toISOString();
+    saveDatabase();
+    broadcast({ type: 'photo_deleted', id });
+  }
+
+  res.json({ success: true, id });
+});
+
+app.post('/api/photos/react', (req, res) => {
+  const { photoId, emoji } = req.body;
+  if (!photoId || !emoji || !dbState.familyPhotos) {
+    res.status(400).json({ error: 'Parámetros incompletos' });
+    return;
+  }
+
+  let targetPhoto: any;
+  dbState.familyPhotos = dbState.familyPhotos.map((p) => {
+    if (p.id === photoId) {
+      const current = p.reactions?.[emoji] || 0;
+      targetPhoto = {
+        ...p,
+        reactions: {
+          ...(p.reactions || {}),
+          [emoji]: current + 1,
+        },
+      };
+      return targetPhoto;
+    }
+    return p;
+  });
+
+  if (targetPhoto) {
+    dbState.lastUpdated = new Date().toISOString();
+    saveDatabase();
+    broadcast({ type: 'photo_updated', photo: targetPhoto });
+  }
+
+  res.json({ success: true, photo: targetPhoto });
 });
 
 // Vite middleware / Static Serving

@@ -7,9 +7,11 @@ import {
   TaskEvidence, 
   FineRecord, 
   FamilyChatMessage,
-  ExtraPaymentConcept 
+  ExtraPaymentConcept,
+  FamilyPhoto 
 } from '../types';
 import { INSPIRING_FAMILY_ACTIVITIES } from './scheduleGenerator';
+import { idbSaveAll, idbGetAll, MEDIA_STORES } from './indexedDBStorage';
 
 const STORAGE_KEYS = {
   COMPLETIONS: 'rr_completions_v1',
@@ -22,6 +24,7 @@ const STORAGE_KEYS = {
   FINES: 'rr_fines_v1',
   FAMILY_CHAT: 'rr_family_chat_v1',
   EXTRA_PAYMENTS: 'rr_extra_payments_v1',
+  FAMILY_PHOTOS: 'rr_family_photos_v1',
 };
 
 // Initial default notes for the Gratitude & Thoughts Wall
@@ -285,6 +288,75 @@ export function saveStoredTaskEvidences(evidences: TaskEvidence[]) {
     localStorage.setItem(STORAGE_KEYS.TASK_EVIDENCES, JSON.stringify(evidences));
   } catch {
     // safely ignore
+  }
+}
+
+// ==========================================
+// ÁLBUM DE FOTOS FAMILIARES (CON DESCRIPCIÓN DEL DÍA)
+// ==========================================
+
+export function getStoredFamilyPhotos(): FamilyPhoto[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.FAMILY_PHOTOS);
+    if (!raw) {
+      const initialPhotos: FamilyPhoto[] = [
+        {
+          id: 'photo-seed-1',
+          title: 'Tarde de parque con Luna 🐩🌿',
+          description: 'Hoy salimos todos a caminar con Lunita después de hacer la tarea. Romina le lanzó la pelota y Regina le dio premios cuando se sentó quieta. ¡Un día súper feliz en familia!',
+          date: '2026-09-15',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+          imageDataUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&auto=format&fit=crop&q=80',
+          uploadedBy: 'mama',
+          uploadedByName: 'Mamá 👩❤️',
+          category: 'paseo_luna',
+          reactions: { '❤️': 4, '🐩': 3, '🌟': 2 }
+        },
+        {
+          id: 'photo-seed-2',
+          title: 'Regina practicando piano con alegría 🎹✨',
+          description: 'Completó su lección de escalas sin equivocarse una sola vez. Mamá le aplaudió mucho y Luna se quedó escuchando abajo del banquito.',
+          date: '2026-09-16',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
+          imageDataUrl: 'https://images.unsplash.com/photo-1520523839898-5071270404a7?w=800&auto=format&fit=crop&q=80',
+          uploadedBy: 'regina',
+          uploadedByName: 'Regina 💜',
+          category: 'logro',
+          reactions: { '👏': 3, '❤️': 3 }
+        }
+      ];
+      try {
+        localStorage.setItem(STORAGE_KEYS.FAMILY_PHOTOS, JSON.stringify(initialPhotos));
+        idbSaveAll(MEDIA_STORES.PHOTOS, initialPhotos).catch(() => {});
+      } catch {
+        // ignore
+      }
+      return initialPhotos;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredFamilyPhotos(photos: FamilyPhoto[]) {
+  // 1. Save in IndexedDB for reliable high-volume photo storage
+  idbSaveAll(MEDIA_STORES.PHOTOS, photos).catch(() => {});
+
+  // 2. Also try localStorage
+  try {
+    localStorage.setItem(STORAGE_KEYS.FAMILY_PHOTOS, JSON.stringify(photos));
+  } catch {
+    // If quota exceeded, save light metadata in localStorage
+    try {
+      const lightweight = photos.map(p => ({
+        ...p,
+        imageDataUrl: p.imageDataUrl.startsWith('data:') ? '' : p.imageDataUrl
+      }));
+      localStorage.setItem(STORAGE_KEYS.FAMILY_PHOTOS, JSON.stringify(lightweight));
+    } catch {
+      // ignore
+    }
   }
 }
 

@@ -206,6 +206,10 @@ class SoundFX {
       // ignored
     }
   }
+
+  playCelebration() {
+    this.playFanfare();
+  }
 }
 
 export const soundFX = new SoundFX();

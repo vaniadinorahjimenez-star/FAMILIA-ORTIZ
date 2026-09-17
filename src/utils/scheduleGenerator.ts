@@ -161,26 +161,28 @@ export function generateDailySchedule(date: Date): RoutineTask[] {
     });
   }
 
-  // Hacer mi tarea escolar (Diario 3:00 - 4:00 PM)
-  tasks.push({
-    id: 'homework-daily',
-    title: 'Hacer mi tarea escolar 📚✏️',
-    description: isWeekend
-      ? 'Adelantar tareas pendientes, repasar lecturas de la escuela y alistar mochilas.'
-      : 'Hacer todas las tareas de la escuela concentradas, repasar apuntes y dejar cuadernos listos.',
-    timeSlot: '15:00 - 16:00',
-    timeCategory: 'afternoon',
-    assignedTo: 'both',
-    category: 'custom',
-    points: 20,
-    iconName: 'BookOpen',
-  });
+  // Hacer mi tarea escolar (Solo de Lunes a Viernes. Los Sábados y Domingos NO hay tareas de la escuela)
+  if (!isWeekend) {
+    tasks.push({
+      id: 'homework-daily',
+      title: 'Hacer mi tarea escolar 📚✏️',
+      description: 'Hacer todas las tareas de la escuela concentradas, repasar apuntes y dejar cuadernos listos.',
+      timeSlot: '15:00 - 16:00',
+      timeCategory: 'afternoon',
+      assignedTo: 'both',
+      category: 'custom',
+      points: 20,
+      iconName: 'BookOpen',
+    });
+  }
 
-  // Regina Afternoon Walk with Luna (Daily 4:00 - 5:00 PM, tras terminar la tarea)
+  // Regina Afternoon Walk with Luna (Daily 4:00 - 5:00 PM)
   tasks.push({
     id: 'regina-luna-afternoon',
     title: 'Paseo de la tarde con Luna 🐕',
-    description: 'Regina saca a pasear a Luna con su correa y bolsitas para estirar las patitas tras la tarea.',
+    description: isWeekend
+      ? 'Regina saca a pasear a Luna con su correa y bolsitas para disfrutar la tarde de fin de semana.'
+      : 'Regina saca a pasear a Luna con su correa y bolsitas para estirar las patitas tras la tarea escolar.',
     timeSlot: '16:00 - 17:00',
     timeCategory: 'afternoon',
     assignedTo: 'regina',

@@ -1,10 +1,21 @@
-import { FamilyChatMessage } from '../types';
+import { FamilyChatMessage, FamilyPhoto } from '../types';
+
+export interface OnlineUser {
+  userId: string;
+  name: string;
+  avatarEmoji: string;
+  lastSeen: number;
+}
 
 export type RealtimeEvent =
-  | { type: 'init'; familyChat: FamilyChatMessage[]; lastUpdated: string }
+  | { type: 'init'; familyChat: FamilyChatMessage[]; lastUpdated: string; onlineUsers?: OnlineUser[]; familyPhotos?: FamilyPhoto[] }
   | { type: 'chat_message'; message: FamilyChatMessage; totalCount?: number }
   | { type: 'update_message'; message: FamilyChatMessage }
   | { type: 'delete_message'; id: string }
+  | { type: 'photo_added'; photo: FamilyPhoto; totalCount?: number }
+  | { type: 'photo_updated'; photo: FamilyPhoto }
+  | { type: 'photo_deleted'; id: string }
+  | { type: 'presence_update'; onlineUsers: OnlineUser[] }
   | { type: 'sync_update'; lastUpdated: string; payload?: any };
 
 type RealtimeListener = (event: RealtimeEvent) => void;
@@ -13,10 +24,13 @@ class RealtimeChatClient {
   private ws: WebSocket | null = null;
   private sse: EventSource | null = null;
   private listeners: Set<RealtimeListener> = new Set();
+  private broadcastChannel: BroadcastChannel | null = null;
   private reconnectTimer: any = null;
   private pollTimer: any = null;
+  private presenceHeartbeatTimer: any = null;
   private isConnecting = false;
   private lastKnownTimestamp: string = '';
+  private currentPresenceUser: { userId: string; name?: string; avatarEmoji?: string } | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -25,6 +39,20 @@ class RealtimeChatClient {
   }
 
   public init() {
+    // BroadcastChannel for instant same-browser & cross-tab sync
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('familia_jimenez_realtime');
+        this.broadcastChannel.onmessage = (event) => {
+          if (event.data) {
+            this.notify(event.data, false);
+          }
+        };
+      } catch {
+        // ignore
+      }
+    }
+
     this.connectWebSocket();
     this.connectSSE();
     this.startBackgroundPolling();
@@ -37,9 +65,16 @@ class RealtimeChatClient {
     };
   }
 
-  private notify(event: RealtimeEvent) {
+  private notify(event: RealtimeEvent, shouldBroadcast = true) {
     if (event.type === 'chat_message' && event.message?.timestamp) {
       this.lastKnownTimestamp = event.message.timestamp;
+    }
+    if (shouldBroadcast && this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage(event);
+      } catch {
+        // ignore
+      }
     }
     for (const listener of this.listeners) {
       try {
@@ -164,23 +199,29 @@ class RealtimeChatClient {
    * Send a message to server
    */
   public async sendMessage(msg: FamilyChatMessage): Promise<FamilyChatMessage> {
-    // 1. Try immediate REST call to /api/chat
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(msg),
-    });
+    let savedMsg = msg;
 
-    if (!res.ok) {
-      throw new Error(`Error enviando mensaje (${res.status})`);
+    // 1. Try REST call to /api/chat if backend server is available
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(msg),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.message) {
+          savedMsg = json.message;
+        }
+      }
+    } catch {
+      // Fallback for static hosting (Netlify/Vercel)
     }
 
-    const json = await res.json();
-    const savedMsg = json.message || msg;
-
-    // Notify locally immediately
+    // Notify locally & broadcast across tabs immediately
     this.notify({ type: 'chat_message', message: savedMsg });
 
     // Also send via WS if active
@@ -245,6 +286,136 @@ class RealtimeChatClient {
     if (!res.ok) return [];
     const json = await res.json();
     return json.messages || [];
+  }
+
+  /**
+   * Send active user presence so everyone can see who is online
+   */
+  public async sendPresence(user: { userId: string; name?: string; avatarEmoji?: string }): Promise<void> {
+    this.currentPresenceUser = user;
+
+    // Send via WebSocket if open
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify({
+          type: 'presence',
+          userId: user.userId,
+          name: user.name,
+          avatarEmoji: user.avatarEmoji,
+        }));
+      } catch {
+        // ignore
+      }
+    }
+
+    // Also send via REST API for persistence
+    try {
+      const res = await fetch('/api/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.onlineUsers)) {
+          this.notify({ type: 'presence_update', onlineUsers: json.onlineUsers });
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Ensure periodic heartbeat every 20 seconds
+    if (!this.presenceHeartbeatTimer) {
+      this.presenceHeartbeatTimer = setInterval(() => {
+        if (this.currentPresenceUser && typeof document !== 'undefined' && !document.hidden) {
+          this.sendPresence(this.currentPresenceUser);
+        }
+      }, 20000);
+    }
+  }
+
+  /**
+   * Fetch active online users
+   */
+  public async fetchOnlineUsers(): Promise<OnlineUser[]> {
+    try {
+      const res = await fetch('/api/presence', { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        return json.onlineUsers || [];
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  }
+
+  /**
+   * Send new family photo with description of that day
+   */
+  public async sendFamilyPhoto(photo: FamilyPhoto): Promise<boolean> {
+    // Notify locally and broadcast immediately
+    this.notify({ type: 'photo_added', photo });
+
+    try {
+      const res = await fetch('/api/photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(photo),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Delete a family photo
+   */
+  public async deleteFamilyPhoto(id: string): Promise<boolean> {
+    this.notify({ type: 'photo_deleted', id });
+
+    try {
+      const res = await fetch(`/api/photos/${id}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * React to a family photo
+   */
+  public async reactFamilyPhoto(photoId: string, emoji: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/photos/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoId, emoji }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Fetch family photos from server
+   */
+  public async fetchFamilyPhotos(): Promise<FamilyPhoto[]> {
+    try {
+      const res = await fetch('/api/photos', { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        return json.photos || [];
+      }
+    } catch {
+      // ignore
+    }
+    return [];
   }
 }
 

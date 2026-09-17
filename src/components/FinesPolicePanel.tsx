@@ -224,56 +224,56 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
 
       {/* Modal / Inline Form to Add a Fine */}
       {showAddForm && (
-        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-6 sm:p-7 rounded-3xl text-white border-2 border-amber-400 shadow-2xl animate-in zoom-in-95">
-          <div className="flex items-center justify-between pb-3 border-b border-blue-800/80 mb-5">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2.5 bg-amber-400 text-slate-950 rounded-2xl">
-                <ShieldAlert className="w-5 h-5" />
+        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-3.5 sm:p-4 rounded-3xl text-white border-2 border-amber-400 shadow-2xl animate-in zoom-in-95">
+          <div className="flex items-center justify-between pb-2 border-b border-blue-800/80 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-amber-400 text-slate-950 rounded-xl">
+                <ShieldAlert className="w-4 h-4" />
               </span>
               <div>
-                <h3 className="text-xl font-bold font-['Fredoka',sans-serif] text-white flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold font-['Fredoka',sans-serif] text-white flex items-center gap-1.5 leading-tight">
                   <span>Boleta Oficial de Infracción</span>
-                  <span className="text-xs bg-amber-400 text-slate-950 px-2 py-0.5 rounded font-black">
+                  <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black">
                     NAN 👮‍♀️
                   </span>
                 </h3>
-                <p className="text-xs text-blue-200">
-                  Registra la falta, sube la foto de prueba y aplica la deducción de $5 pesos
+                <p className="text-[10px] text-blue-200">
+                  Registra la falta, sube la foto de prueba y descuenta $5 pesos
                 </p>
               </div>
             </div>
 
             <button
               onClick={() => setShowAddForm(false)}
-              className="p-1.5 text-blue-300 hover:text-white hover:bg-blue-800/60 rounded-full"
+              className="p-1 text-blue-300 hover:text-white hover:bg-blue-800/60 rounded-full cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {formError && (
-            <div className="mb-4 p-3 bg-rose-500/20 border border-rose-400 text-rose-200 rounded-xl text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+            <div className="mb-2 p-2 bg-rose-500/20 border border-rose-400 text-rose-200 rounded-xl text-xs flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-rose-400" />
               <span>{formError}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmitFine} className="space-y-4">
+          <form onSubmit={handleSubmitFine} className="space-y-2.5">
             {/* Choose child */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">
                 ¿A quién se le levanta la multa? *
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setChildId('romina');
                     soundFX.playPop();
                   }}
-                  className={`p-3 rounded-2xl border-2 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+                  className={`py-1.5 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     childId === 'romina'
-                      ? 'border-rose-400 bg-rose-500/30 text-white shadow'
+                      ? 'border-rose-400 bg-rose-500/30 text-white shadow-xs'
                       : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500'
                   }`}
                 >
@@ -286,9 +286,9 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
                     setChildId('regina');
                     soundFX.playPop();
                   }}
-                  className={`p-3 rounded-2xl border-2 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+                  className={`py-1.5 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     childId === 'regina'
-                      ? 'border-purple-400 bg-purple-500/30 text-white shadow'
+                      ? 'border-purple-400 bg-purple-500/30 text-white shadow-xs'
                       : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500'
                   }`}
                 >
@@ -299,10 +299,10 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
 
             {/* Quick Reason Chips */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">
                 Motivo de la Infracción *
               </label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="flex flex-wrap gap-1 mb-1">
                 {COMMON_REASONS.map((r) => (
                   <button
                     key={r}
@@ -311,9 +311,9 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
                       setReason(r);
                       soundFX.playPop();
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
                       reason === r
-                        ? 'bg-amber-400 text-slate-950 font-bold shadow'
+                        ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                     }`}
                   >
@@ -326,13 +326,13 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
                     setReason('custom');
                     soundFX.playPop();
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
                     reason === 'custom'
-                      ? 'bg-amber-400 text-slate-950 font-bold shadow'
+                      ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                   }`}
                 >
-                  Otro motivo personalizado ✍️
+                  Otro ✍️
                 </button>
               </div>
 
@@ -343,19 +343,19 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
                   value={customReason}
                   onChange={(e) => setCustomReason(e.target.value)}
                   placeholder="Escribe el motivo exacto de la multa..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none mt-1"
                 />
               )}
             </div>
 
             {/* Photo Evidence Upload (Drag and Drop & click) */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                  Foto de Evidencia de la Infracción (ej. Ropa tirada) 📸
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                  Foto de Evidencia 📸
                 </label>
-                <span className="text-[11px] text-blue-300">
-                  ¡Toma la foto donde se vea la falta!
+                <span className="text-[10px] text-blue-300">
+                  Ropa en el piso, trastes sucios, etc.
                 </span>
               </div>
 
@@ -378,63 +378,62 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`p-5 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all ${
+                  className={`p-2.5 border border-dashed rounded-xl text-center cursor-pointer transition-all flex items-center justify-center gap-2 ${
                     isDragging
                       ? 'border-amber-400 bg-amber-400/20'
-                      : 'border-slate-700 hover:border-amber-400/80 bg-slate-800/50 hover:bg-slate-800/80'
+                      : 'border-slate-700 hover:border-amber-400/80 bg-slate-800/50'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-amber-400/20 text-amber-300 mx-auto flex items-center justify-center mb-1.5">
-                    <Camera className="w-5 h-5" />
+                  <div className="w-7 h-7 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center flex-shrink-0">
+                    <Camera className="w-3.5 h-3.5" />
                   </div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white">
-                    Arrastra la foto de la evidencia o haz clic para tomarla
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Nan puede tomar la foto de la ropa en el piso, juguetes regados, etc.
-                  </p>
-                  <span className="inline-block mt-2.5 px-3 py-1 bg-amber-400 text-slate-950 text-xs font-bold rounded-lg shadow hover:bg-amber-300">
-                    Tomar o Elegir Foto 📸
-                  </span>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-white leading-tight">
+                      Subir o tomar foto de evidencia
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Arrastra la imagen o haz clic aquí
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <div className="relative rounded-2xl overflow-hidden border-2 border-amber-400 group">
+                <div className="relative rounded-xl overflow-hidden border border-amber-400 group max-h-32">
                   <img
                     src={imageDataUrl}
                     alt="Evidencia de infracción"
-                    className="w-full h-48 object-cover bg-slate-900"
+                    className="w-full h-28 object-cover bg-slate-900"
                   />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 bg-white text-slate-900 font-bold text-xs rounded-xl shadow"
+                      className="px-2.5 py-1 bg-white text-slate-900 font-bold text-xs rounded-lg shadow cursor-pointer"
                     >
-                      Cambiar Foto 🔄
+                      Cambiar 🔄
                     </button>
                     <button
                       type="button"
                       onClick={() => setImageDataUrl('')}
-                      className="px-3 py-1.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow"
+                      className="px-2.5 py-1 bg-rose-600 text-white font-bold text-xs rounded-lg shadow cursor-pointer"
                     >
-                      Quitar Foto ✕
+                      Quitar ✕
                     </button>
                   </div>
-                  <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded uppercase tracking-wider">
+                  <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[9px] font-black rounded uppercase tracking-wider">
                     Evidencia Lista
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Amount & Notes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Amount & Notes in 2-col */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
-                  Monto de la Multa (MXN)
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-0.5">
+                  Monto ($ MXN)
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
                     $
                   </div>
                   <input
@@ -443,45 +442,39 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
                     max={50}
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-700 bg-slate-800 text-white text-sm font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                    className="w-full pl-6 pr-2 py-1 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-amber-400 font-semibold">
-                    MXN a descontar
-                  </div>
                 </div>
-                <span className="text-[10px] text-slate-400 block mt-1">
-                  Regla acordada: $5 pesos por multa.
-                </span>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
-                  Observaciones de Nan (Opcional)
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-0.5">
+                  Observaciones de Nan
                 </label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ej: Se le avisó dos veces y no levantó su sudadera."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-700 bg-slate-800 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  placeholder="Ej: Se le avisó dos veces..."
+                  className="w-full px-2.5 py-1 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-blue-900/70">
+            <div className="flex items-center justify-end gap-2 pt-1.5 border-t border-blue-900/70">
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 font-bold text-xs"
+                className="px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 font-bold text-xs cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-md flex items-center gap-2"
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
               >
-                <BadgeAlert className="w-4 h-4 text-slate-950" />
+                <BadgeAlert className="w-3.5 h-3.5 text-slate-950" />
                 <span>Aplicar Multa (-${amount} MXN)</span>
               </button>
             </div>
@@ -660,48 +653,48 @@ export const FinesPolicePanel: React.FC<FinesPolicePanelProps> = ({
       {zoomedFine && (
         <div
           onClick={() => setZoomedFine(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-xs animate-in fade-in"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg max-h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between animate-in zoom-in-95"
+            className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between animate-in zoom-in-95"
           >
-            <div className="relative bg-black flex items-center justify-center max-h-[50vh] min-h-[160px] flex-1">
+            <div className="relative bg-black flex items-center justify-center max-h-[38vh] min-h-[140px] flex-1">
               {zoomedFine.imageDataUrl && (
                 <img
                   src={zoomedFine.imageDataUrl}
                   alt={zoomedFine.reason}
-                  className="max-h-[50vh] w-auto object-contain"
+                  className="max-h-[38vh] w-auto object-contain"
                 />
               )}
               <button
                 onClick={() => setZoomedFine(null)}
-                className="absolute top-2.5 right-2.5 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer"
+                className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer"
                 aria-label="Cerrar"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 bg-white flex-shrink-0 border-t border-slate-100">
+            <div className="p-2.5 sm:p-3 flex items-center justify-between gap-2.5 bg-white flex-shrink-0 border-t border-slate-100">
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold text-rose-600 block uppercase tracking-wider">
+                <span className="text-[9px] font-bold text-rose-600 block uppercase tracking-wider">
                   Infracción por {zoomedFine.officer}
                 </span>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
                   {zoomedFine.reason}
                 </h3>
                 {zoomedFine.notes && (
-                  <p className="text-xs text-slate-600 truncate mt-0.5 italic">
+                  <p className="text-[11px] text-slate-600 truncate mt-0.5 italic">
                     &ldquo;{zoomedFine.notes}&rdquo;
                   </p>
                 )}
-                <span className="text-[11px] text-slate-500 block mt-0.5">
+                <span className="text-[10px] text-slate-500 block mt-0.5">
                   Multa a {zoomedFine.childId === 'romina' ? 'Romina' : 'Regina'} · -${zoomedFine.amount} MXN
                 </span>
               </div>
               <button
                 onClick={() => setZoomedFine(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex-shrink-0 cursor-pointer"
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex-shrink-0 cursor-pointer"
               >
                 Cerrar
               </button>

@@ -58,47 +58,47 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
     >
       <div 
         id="celebration-modal-card"
-        className="relative w-full max-w-[340px] sm:max-w-[360px] max-h-[92vh] flex flex-col p-4 sm:p-5 bg-white rounded-3xl shadow-2xl border-3 border-amber-300 text-center overflow-hidden transform animate-in zoom-in-95 duration-250"
+        className="relative w-full max-w-[340px] sm:max-w-[380px] flex flex-col p-3.5 sm:p-4 bg-white rounded-3xl shadow-2xl border-2 border-amber-300 text-center overflow-hidden transform animate-in zoom-in-95 duration-250"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           id="celebration-close-btn"
           onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+          className="absolute top-2.5 right-2.5 p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
           aria-label="Cerrar"
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* Luna French Poodle Centerpiece with Trophy */}
-        <div className="flex justify-center items-center gap-2 mb-1">
-          <div className="relative">
-            <LunaFrenchPoodle size="sm" variant="default" showBark={true} />
-            <div className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 p-1 rounded-full shadow-xs border border-white">
-              <Trophy className="w-3.5 h-3.5" />
+        {/* Luna French Poodle Centerpiece + Headline */}
+        <div className="flex items-center justify-center gap-3 mb-2 pr-6">
+          <div className="relative flex-shrink-0 scale-90">
+            <LunaFrenchPoodle size="sm" variant="default" showBark={false} />
+            <div className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 p-0.5 rounded-full shadow-xs border border-white">
+              <Trophy className="w-3 h-3" />
             </div>
+          </div>
+          <div className="text-left">
+            <h3 className="text-base sm:text-lg font-black font-['Fredoka',sans-serif] text-slate-900 leading-tight">
+              ¡100% COMPLETADO! 🎉
+            </h3>
+            <p className="text-xs font-bold text-purple-700">
+              ¡Felicidades, {childName}!
+            </p>
           </div>
         </div>
 
-        <h3 className="text-xl sm:text-2xl font-black font-['Fredoka',sans-serif] text-slate-900 leading-tight">
-          ¡100% COMPLETADO! 🎉
-        </h3>
-
-        <p className="text-sm font-bold text-purple-700 mt-0.5">
-          ¡Felicidades, {childName}!
-        </p>
-
-        <p className="text-xs text-slate-600 my-2 leading-relaxed">
+        <p className="text-[11px] text-slate-600 mb-2 leading-snug">
           Completaste todas tus rutinas de hoy. ¡Luna, Nan, Mamá y Papá están súper orgullosos!
         </p>
 
-        <div className="flex items-center justify-center gap-2.5 p-2.5 mb-3 bg-gradient-to-r from-amber-50 via-rose-50 to-purple-50 rounded-2xl border border-amber-200">
-          <Star className="w-5 h-5 text-amber-500 fill-amber-400 flex-shrink-0" />
+        <div className="flex items-center justify-center gap-2 p-2 mb-2.5 bg-gradient-to-r from-amber-50 via-rose-50 to-purple-50 rounded-2xl border border-amber-200">
+          <Star className="w-4 h-4 text-amber-500 fill-amber-400 flex-shrink-0" />
           <div className="text-left">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-500">
               Puntos acumulados hoy
             </span>
-            <span className="text-sm sm:text-base font-black text-amber-800">
+            <span className="text-xs sm:text-sm font-black text-amber-800">
               +{pointsEarned} Puntos para tus $100 pesos
             </span>
           </div>
@@ -107,13 +107,13 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
         <button
           id="celebration-keep-going-btn"
           onClick={onClose}
-          className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md active:scale-98 transition-all cursor-pointer"
+          className="w-full py-2 px-3 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs active:scale-98 transition-all cursor-pointer"
         >
           ¡Genial, continuar! 🚀
         </button>
 
-        <div className="mt-2.5 flex items-center justify-center gap-1 text-[11px] text-slate-400">
-          <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+        <div className="mt-1.5 flex items-center justify-center gap-1 text-[10px] text-slate-400">
+          <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
           <span>¡Gran trabajo en familia!</span>
         </div>
       </div>

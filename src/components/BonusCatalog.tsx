@@ -464,47 +464,47 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
       {showCustomModal && (
         <div 
           onClick={() => setShowCustomModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border-2 border-amber-300 relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+            className="w-full max-w-sm bg-white rounded-3xl p-3.5 sm:p-4 shadow-2xl border-2 border-amber-300 relative flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
           >
             <button
               onClick={() => setShowCustomModal(false)}
-              className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
+              className="absolute top-2.5 right-2.5 p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
               aria-label="Cerrar"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div>
-              <h4 className="text-base sm:text-lg font-bold font-['Fredoka',sans-serif] text-slate-800 mb-0.5 pr-6">
+              <h4 className="text-sm sm:text-base font-bold font-['Fredoka',sans-serif] text-slate-800 mb-0.5 pr-6">
                 Inventar Actividad Sin Pantalla ✨
               </h4>
-              <p className="text-[11px] text-slate-500 mb-3">
-                Crea una actividad divertida que no use pantallas y ponle su recompensa.
+              <p className="text-[10px] text-slate-500 mb-2">
+                Crea una actividad divertida sin pantallas y define su recompensa.
               </p>
             </div>
 
-            <form onSubmit={handleCreateCustom} className="space-y-3">
+            <form onSubmit={handleCreateCustom} className="space-y-2">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">
                   ¿Qué actividad hizo? *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej: Ayudó a bañar a Luna, hizo cartas para los abuelos..."
+                  placeholder="Ej: Ayudó a bañar a Luna, cartas a los abuelos..."
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">
                     Puntos extras
                   </label>
                   <input
@@ -514,12 +514,12 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
                     step="5"
                     value={customPoints}
                     onChange={(e) => setCustomPoints(Number(e.target.value))}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full px-2.5 py-1 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">
                     Pesos ($ MXN)
                   </label>
                   <input
@@ -528,23 +528,23 @@ export const BonusCatalog: React.FC<BonusCatalogProps> = ({
                     max="30"
                     value={customPesos}
                     onChange={(e) => setCustomPesos(Number(e.target.value))}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className="w-full px-2.5 py-1 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCustomModal(false)}
-                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={activeChildClaimedToday}
-                  className={`px-4 py-1.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer ${
+                  className={`px-3 py-1 rounded-xl font-bold text-xs shadow-2xs cursor-pointer ${
                     activeChildClaimedToday
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       : 'bg-amber-500 hover:bg-amber-600 text-white'
