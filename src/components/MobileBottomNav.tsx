@@ -216,6 +216,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <nav 
         id="mobile-bottom-navigation"
         className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-2 py-1 flex items-center justify-around max-w-lg mx-auto sm:max-w-xl pb-safe"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
       >
         {/* 1. Día / Hoy */}
         <button

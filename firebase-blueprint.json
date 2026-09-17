@@ -9,39 +9,87 @@
           "type": "string",
           "description": "Unique identifier of the message"
         },
-        "senderId": {
+        "sender": {
           "type": "string",
-          "description": "ID of the family member sending the message"
+          "description": "Name of sender (Mamá, Papá, Regina, Romina, Nan)"
         },
-        "senderName": {
+        "senderRole": {
           "type": "string",
-          "description": "Name of the sender (e.g. Mamá, Papá, Nan, Regina, Romina)"
-        },
-        "senderAvatar": {
-          "type": "string",
-          "description": "Emoji or icon for the sender"
+          "description": "Role of the sender"
         },
         "text": {
           "type": "string",
-          "maxLength": 1000,
-          "description": "Content of the chat message"
+          "maxLength": 5000,
+          "description": "Text content of the chat message"
         },
-        "createdAt": {
+        "timestamp": {
           "type": "string",
-          "description": "Timestamp when the message was sent"
+          "description": "ISO timestamp of the message"
         },
         "channelId": {
           "type": "string",
-          "description": "Chat room or channel identifier"
+          "description": "Channel ID (e.g. family-chat)"
+        },
+        "isNoticeToMama": {
+          "type": "boolean",
+          "description": "Flag for important notice sent to Mamá"
+        },
+        "imageDataUrl": {
+          "type": "string",
+          "description": "Attached image thumbnail or data"
+        },
+        "reactions": {
+          "type": "object",
+          "description": "Map of emoji reactions and counts"
+        },
+        "replyTo": {
+          "type": "object",
+          "description": "Quoted parent message details"
+        },
+        "reviewedByMama": {
+          "type": "boolean",
+          "description": "Whether notice has been reviewed by Mamá"
+        },
+        "mamaComment": {
+          "type": "string",
+          "description": "Mamá's comment on the notice"
+        },
+        "mamaApprovedAt": {
+          "type": "string",
+          "description": "Approval timestamp by Mamá"
         }
       },
-      "required": ["senderId", "senderName", "text", "channelId"]
+      "required": ["id", "sender", "senderRole", "timestamp"]
+    },
+    "FamilySyncRoom": {
+      "title": "FamilySyncRoom",
+      "description": "Full family state synchronization room",
+      "type": "object",
+      "properties": {
+        "lastUpdated": {
+          "type": "string",
+          "description": "ISO timestamp of last sync update"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "User who submitted the update"
+        },
+        "completions": {
+          "type": "object",
+          "description": "Map of routine completion keys"
+        }
+      },
+      "required": ["lastUpdated"]
     }
   },
   "firestore": {
     "/chat_messages/{messageId}": {
       "schema": "ChatMessage",
-      "description": "Real-time chat messages collection synchronized across devices"
+      "description": "Real-time chat messages synchronized across all family devices"
+    },
+    "/family_sync/{roomId}": {
+      "schema": "FamilySyncRoom",
+      "description": "Real-time full family state synchronization across all devices"
     }
   }
 }

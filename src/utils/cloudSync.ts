@@ -11,6 +11,8 @@ import {
   ExtraPaymentConcept,
   FamilyPhoto 
 } from '../types';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const SYNC_KEYS = {
   ROOM_ID: 'rr_family_sync_room_id_v1',
@@ -74,16 +76,58 @@ export function saveStoredRemoteObjectId(id: string) {
 }
 
 /**
- * Fetch current state from the cloud server
+ * Subscribes to real-time full state synchronization from Firebase Firestore.
  */
-export async function fetchCloudState(): Promise<CloudSyncPayload | null> {
+export function subscribeToFamilySync(
+  roomName = getStoredRoomId(),
+  onRemoteState: (payload: CloudSyncPayload) => void
+): () => void {
   try {
-    // 1. Primary: fetch from our dedicated full-stack Express server
+    const syncDocRef = doc(db, 'family_sync', roomName);
+    const unsubscribe = onSnapshot(
+      syncDocRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as CloudSyncPayload;
+          if (data && data.lastUpdated) {
+            onRemoteState(data);
+          }
+        }
+      },
+      (error) => {
+        console.warn('[FamilySync] Firestore real-time listener notice:', error);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('[FamilySync] Firestore subscribe error:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Fetch current state from Cloud Firestore, with local server and external fallback
+ */
+export async function fetchCloudState(roomName = getStoredRoomId()): Promise<CloudSyncPayload | null> {
+  // 1. Primary: Cloud Firestore database
+  try {
+    const syncDocRef = doc(db, 'family_sync', roomName);
+    const snap = await getDoc(syncDocRef);
+    if (snap.exists()) {
+      const data = snap.data() as CloudSyncPayload;
+      if (data && data.lastUpdated) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('[CloudSync] Firestore read notice, trying fallback:', err);
+  }
+
+  // 2. Secondary: dedicated Express server if running
+  try {
     const res = await fetch('/api/sync', {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: { 'Accept': 'application/json' },
       cache: 'no-store',
     });
 
@@ -93,11 +137,11 @@ export async function fetchCloudState(): Promise<CloudSyncPayload | null> {
         return data as CloudSyncPayload;
       }
     }
-  } catch (err) {
-    console.warn('[CloudSync] Internal /api/sync unreachable, trying fallback:', err);
+  } catch {
+    // ignore
   }
 
-  // Fallback to external mirror if needed
+  // 3. Fallback to external mirror if needed
   try {
     const remoteId = getStoredRemoteObjectId();
     const res = await fetch(`${API_BASE}/${remoteId}`, {
@@ -119,32 +163,37 @@ export async function fetchCloudState(): Promise<CloudSyncPayload | null> {
 }
 
 /**
- * Push current state to the cloud server
+ * Push current state to Cloud Firestore, with local server and external fallback
  */
 export async function pushCloudState(
   payload: CloudSyncPayload,
   remoteId = getStoredRemoteObjectId(),
   roomName = getStoredRoomId()
 ): Promise<string> {
-  let serverSyncSuccess = false;
+  let firestoreSuccess = false;
 
-  // 1. Primary: push to our dedicated full-stack server
+  // 1. Primary: Cloud Firestore database (always accessible from Netlify, phones, tablets)
   try {
-    const res = await fetch('/api/sync', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      serverSyncSuccess = true;
-    }
+    const cleanPayload = JSON.parse(JSON.stringify(payload));
+    const syncDocRef = doc(db, 'family_sync', roomName);
+    await setDoc(syncDocRef, cleanPayload, { merge: true });
+    firestoreSuccess = true;
   } catch (err) {
-    console.warn('[CloudSync] Failed to push to /api/sync:', err);
+    console.warn('[CloudSync] Firestore push error, continuing to fallbacks:', err);
   }
 
-  // 2. Secondary backup push
+  // 2. Secondary: push to dedicated Express server if active
+  try {
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // ignore
+  }
+
+  // 3. Tertiary backup push
   try {
     if (remoteId) {
       await fetch(`${API_BASE}/${remoteId}`, {
@@ -160,7 +209,7 @@ export async function pushCloudState(
     // ignore backup error
   }
 
-  return serverSyncSuccess ? 'server-synced' : remoteId;
+  return firestoreSuccess ? 'firestore-synced' : remoteId;
 }
 
 /**

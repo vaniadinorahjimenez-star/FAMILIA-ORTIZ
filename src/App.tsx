@@ -61,7 +61,8 @@ import {
   fetchCloudState, 
   pushCloudState, 
   mergeCloudData, 
-  getStoredRoomId 
+  getStoredRoomId,
+  subscribeToFamilySync
 } from './utils/cloudSync';
 import { realtimeChat, OnlineUser } from './utils/realtimeChat';
 import { 
@@ -547,6 +548,15 @@ export default function App() {
       }
     });
 
+    // 4c. Real-time Firebase Firestore full Family State sync across all devices
+    const unsubscribeFamilySync = subscribeToFamilySync(undefined, (remote) => {
+      if (remote && remote.lastUpdated) {
+        const current = getCurrentPayload();
+        const merged = mergeCloudData(current, remote);
+        applyMergedPayload(merged);
+      }
+    });
+
     // 5. Fast Background Polling every 4 seconds to ensure full consistency across tabs
     const interval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing && networkStatus.isOnline) {
@@ -566,6 +576,7 @@ export default function App() {
     return () => {
       unsubscribe();
       unsubscribeFirebase();
+      unsubscribeFamilySync();
       clearInterval(interval);
     };
   }, [activeUser, applyMergedPayload]);
@@ -1248,7 +1259,10 @@ export default function App() {
       />
 
       {/* Main Content Area: Optimized width & padding for mobile vs tablet */}
-      <main className={deviceView === 'mobile' ? 'max-w-lg mx-auto px-3 pt-3 pb-24' : 'max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-12'}>
+      <main 
+        className={deviceView === 'mobile' ? 'max-w-lg mx-auto px-2 sm:px-3 pt-2 sm:pt-3' : 'max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-12'}
+        style={deviceView === 'mobile' ? { paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 16px))' } : undefined}
+      >
         {activeTab === 'daily' && (
           <DailyView
             currentDate={currentDate}
@@ -1422,6 +1436,7 @@ export default function App() {
             onSwitchUser={handleRequestUserChange}
             onlineUsers={onlineUsers}
             onOpenConnectModal={() => setIsConnectModalOpen(true)}
+            deviceView={deviceView}
           />
         )}
 
