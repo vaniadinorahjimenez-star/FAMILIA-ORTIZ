@@ -233,17 +233,17 @@ export const FamilyChatView: React.FC<FamilyChatViewProps> = ({
         </div>
 
         <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between gap-2 text-xs text-pink-100 font-medium flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 bg-emerald-500/30 text-white font-bold px-2.5 py-1 rounded-full text-[11px] border border-emerald-300/40">
               <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping inline-block" />
-              <span>Sincronización en vivo</span>
+              <span>🔥 Firebase Firestore en tiempo real</span>
             </span>
             <span className="text-white font-semibold text-xs">
-              ⚡ Lo que escribe Romina en su iPad se ve al instante en el cel y en el iPad de Regina
+              ⚡ Sincronización instantánea entre todos los dispositivos (iPad, Celular y PC)
             </span>
           </div>
           <span className="bg-white/15 px-2.5 py-0.5 rounded-full text-[11px] text-white">
-            iPad • Celular • Computadora
+            Base de datos Firestore activa
           </span>
         </div>
       </div>

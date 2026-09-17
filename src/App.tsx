@@ -64,6 +64,13 @@ import {
   getStoredRoomId 
 } from './utils/cloudSync';
 import { realtimeChat, OnlineUser } from './utils/realtimeChat';
+import { 
+  subscribeToFirebaseChat, 
+  sendFirebaseMessage, 
+  deleteFirebaseMessage, 
+  updateFirebaseReaction, 
+  approveFirebaseNotice 
+} from './utils/firebaseChat';
 
 import { Header, ActiveTab } from './components/Header';
 import { DailyView } from './components/DailyView';
@@ -463,6 +470,21 @@ export default function App() {
       avatarEmoji: userProf?.avatarEmoji || '🌸',
     });
 
+    // 4b. Real-time Firebase Firestore Chat synchronization across all devices
+    const unsubscribeFirebase = subscribeToFirebaseChat((remoteMsgs) => {
+      if (remoteMsgs && remoteMsgs.length > 0) {
+        setChatMessages((prev) => {
+          const map = new Map<string, FamilyChatMessage>();
+          [...prev, ...remoteMsgs].forEach((m) => map.set(m.id, m));
+          const sorted = Array.from(map.values()).sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          saveStoredFamilyChat(sorted);
+          return sorted;
+        });
+      }
+    });
+
     // 5. Fast Background Polling every 4 seconds to ensure full consistency across tabs
     const interval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isSyncing && networkStatus.isOnline) {
@@ -481,6 +503,7 @@ export default function App() {
 
     return () => {
       unsubscribe();
+      unsubscribeFirebase();
       clearInterval(interval);
     };
   }, [activeUser, applyMergedPayload]);
@@ -883,7 +906,7 @@ export default function App() {
     soundFX.playPop();
   };
 
-  // Family Chat Handlers (Real-time synced across all devices)
+  // Family Chat Handlers (Real-time synced across all devices with Firebase Firestore)
   const handleSendMessage = async (msg: FamilyChatMessage) => {
     // 1. Optimistic update for sender's UI
     setChatMessages((prev) => {
@@ -893,14 +916,21 @@ export default function App() {
       return updated;
     });
 
-    // 2. Broadcast via server in real time (WebSockets + SSE + DB)
+    // 2. Real-time broadcast to Firebase Firestore (all tablets, phones, PCs)
+    try {
+      await sendFirebaseMessage(msg);
+    } catch (err) {
+      console.warn('[Chat] Firebase Firestore send error:', err);
+    }
+
+    // 3. Complementary broadcast via server fallback
     try {
       await realtimeChat.sendMessage(msg);
     } catch (err) {
       console.warn('[Chat] Realtime send error:', err);
     }
 
-    // 3. Keep cloud backup state aligned
+    // 4. Keep cloud backup state aligned
     triggerDebouncedPush(getCurrentPayload());
   };
 
@@ -911,6 +941,11 @@ export default function App() {
       return updated;
     });
     try {
+      await deleteFirebaseMessage(id);
+    } catch (err) {
+      console.warn('[Chat] Firebase Firestore delete error:', err);
+    }
+    try {
       await realtimeChat.deleteMessage(id);
     } catch (err) {
       console.warn('[Chat] Realtime delete error:', err);
@@ -919,15 +954,17 @@ export default function App() {
   };
 
   const handleAddReaction = async (messageId: string, emoji: string) => {
+    let newCount = 1;
     setChatMessages((prev) => {
       const updated = prev.map((m) => {
         if (m.id === messageId) {
           const currentCount = m.reactions?.[emoji] || 0;
+          newCount = currentCount + 1;
           return {
             ...m,
             reactions: {
               ...(m.reactions || {}),
-              [emoji]: currentCount + 1,
+              [emoji]: newCount,
             },
           };
         }
@@ -936,6 +973,13 @@ export default function App() {
       saveStoredFamilyChat(updated);
       return updated;
     });
+
+    try {
+      await updateFirebaseReaction(messageId, emoji, newCount - 1);
+    } catch (err) {
+      console.warn('[Chat] Firebase Firestore reaction error:', err);
+    }
+
     try {
       await realtimeChat.reactToMessage(messageId, emoji);
     } catch (err) {
@@ -961,6 +1005,13 @@ export default function App() {
       saveStoredFamilyChat(updated);
       return updated;
     });
+
+    try {
+      await approveFirebaseNotice(messageId, comment);
+    } catch (err) {
+      console.warn('[Chat] Firebase Firestore approve notice error:', err);
+    }
+
     try {
       await realtimeChat.approveNotice(messageId, comment);
     } catch (err) {

@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Real-time chat message sent between family members",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the message"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "ID of the family member sending the message"
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Name of the sender (e.g. Mamá, Papá, Nan, Regina, Romina)"
+        },
+        "senderAvatar": {
+          "type": "string",
+          "description": "Emoji or icon for the sender"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Content of the chat message"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the message was sent"
+        },
+        "channelId": {
+          "type": "string",
+          "description": "Chat room or channel identifier"
+        }
+      },
+      "required": ["senderId", "senderName", "text", "channelId"]
+    }
+  },
+  "firestore": {
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Real-time chat messages collection synchronized across devices"
+    }
+  }
+}
