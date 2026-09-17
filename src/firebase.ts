@@ -2,8 +2,15 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import config from '../firebase-applet-config.json';
 
+// Resolve optional Firebase API key from environment variables (e.g. Netlify / Vite config)
+// to prevent hardcoded secrets in repository config files
+const envApiKey = 
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FIREBASE_API_KEY) ||
+  config.apiKey ||
+  '';
+
 export const firebaseConfig = {
-  apiKey: config.apiKey,
+  ...(envApiKey ? { apiKey: envApiKey } : {}),
   authDomain: config.authDomain,
   projectId: config.projectId,
   storageBucket: config.storageBucket,
